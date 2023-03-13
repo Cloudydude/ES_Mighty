@@ -207,7 +207,7 @@ function void fn08555e()
 {
     base.fn08555e()
 
-	if ((global.framecounter % 2) == 0x00 && XtraChar == 0x01)
+	if ((global.framecounter % 2) == 0x00 && global.xtrachar == 0x01)
 	{
 		if (objA0.update_address != 0x01abb6)
 		{
@@ -219,7 +219,7 @@ function void fn08555e()
 global bool Move_Mighty
 function void ExtraChar.Character.onEndingLogo.fade()
 {
-	if (XtraChar == 0x01)
+	if (global.xtrachar == 0x01)
 		Move_Mighty = true
 	base.ExtraChar.Character.onEndingLogo.fade()
 }
@@ -242,7 +242,7 @@ function void fn05f5de()
 function void fn05d9ee()
 {
 	// Falling from space
-	if (XtraChar == 1 && Mods.isModActive("Extra Slot Ray") && Mighty_Pilot == 2 && (System.getGlobalVariableValueByName("Ray_Partner") <= 2))
+	if (global.xtrachar == 1 && Mods.isModActive("Extra Slot Ray") && Mighty_Pilot == 2 && (System.getGlobalVariableValueByName("Ray_Partner") <= 2))
 	{
 		ExtraChar.loadCharacterPalette(0x02, 0x802080 + u32(0x01 * 0x80), 0x00)
 		ExtraChar.loadSpecialPalettes(0x02, CHARACTER_TAILS, 0x802080 + u32(0x01 * 0x80), 0x00)
@@ -1049,7 +1049,7 @@ function string getManiaInspSignpost(u8 character)
 // Ending pose fixes
 function string getCharacterEndPosePaletteKey(u8 character)
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		return base.getCharacterEndPosePaletteKey(character)
 	}
@@ -1059,7 +1059,7 @@ function string getCharacterEndPosePaletteKey(u8 character)
 
 function u8 getModdedEndPosePaletteLine(u8 character, bool isHyperEffect)
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		return base.getModdedEndPosePaletteLine(character, isHyperEffect)
 	}
@@ -1068,7 +1068,7 @@ function u8 getModdedEndPosePaletteLine(u8 character, bool isHyperEffect)
 
 function void loadCharacterEndPosePalette(u8 character, u32 targetAddress, u8 paletteVariant)
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.loadCharacterEndPosePalette(character, targetAddress, paletteVariant)
 		return
@@ -1078,7 +1078,7 @@ function void loadCharacterEndPosePalette(u8 character, u32 targetAddress, u8 pa
 
 function bool UpdatePaletteEffects.SuperForm.endpose()
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		return base.UpdatePaletteEffects.SuperForm.endpose()
 	}
@@ -1088,7 +1088,7 @@ function bool UpdatePaletteEffects.SuperForm.endpose()
 function void UpdatePaletteEffects.SuperForm.endpose.moddingVersion(u8 characterVersion)
 {
 
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.UpdatePaletteEffects.SuperForm.endpose.moddingVersion(characterVersion)
 		return
@@ -1100,7 +1100,7 @@ function void UpdatePaletteEffects.SuperForm.endpose.moddingVersion(u8 character
 function void SpecialStage()
 {
 	//let's load this only for mighty
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.SpecialStage()
 		return
