@@ -87,7 +87,7 @@ function void SuperandHyperPalette()
 
 function void UpdatePaletteEffects.SuperForm.moddingVersion(u8 characterVersion)
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.UpdatePaletteEffects.SuperForm.moddingVersion(characterVersion)
 		return
