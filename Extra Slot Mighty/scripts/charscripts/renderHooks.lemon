@@ -342,7 +342,7 @@ function bool Standalone.onWriteToSpriteTable(s16 px, s16 py, u16 renderQueue)
 		}
 	}
     
-	if (XtraChar == 1)
+	if (global.xtrachar == 1)
 	{
 		if (objA0.update_address == 0x0837b2) //SIGNPOST
 		{
