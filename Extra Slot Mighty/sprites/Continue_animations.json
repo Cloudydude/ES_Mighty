@@ -1,0 +1,6 @@
+{
+	"Continue_0xbd":  { "File": "Continue.bmp", "Rect": "24,4,32,40", "Center": "17,20" },
+	"Continue_0xbe":  { "File": "Continue.bmp", "Rect": "68,4,32,40", "Center": "17,20" },
+	"Continue_S3_0xbd":  { "File": "Continue_S3.bmp", "Rect": "8,8,32,40", "Center": "16,20" },
+	"Continue_S3_0xbe":  { "File": "Continue_S3.bmp", "Rect": "56,8,32,40", "Center": "16,20" }
+}

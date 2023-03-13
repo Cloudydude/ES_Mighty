@@ -1,0 +1,13 @@
+{
+	// Mighty's animations are loaded separately.
+	"new_stand_Mania":
+	{
+		"File": "Mighty_Animations.bin",
+		"RomInject": "0x1FF9B0"
+	},
+	"new_stand_S3":
+	{
+		"File": "Idle_S3.bin",
+		"RomInject": "0x1FFBF0"
+	}
+}

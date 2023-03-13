@@ -1,0 +1,6 @@
+{
+	"Surfboard_Mighty_0x01":  { "File": "Mighty_Surfboard.bmp", "Rect": "0,0,63,18", "Center": "32,6" },
+	"Surfboard_Mighty_0x02":  { "File": "Mighty_Surfboard.bmp", "Rect": "0,23,40,54", "Center": "20,27" },
+	"Surfboard_Mighty_0x03":  { "File": "Mighty_Surfboard.bmp", "Rect": "51,36,18,63", "Center": "12,31" },
+	"Surfboard_Mighty_0x04":  { "File": "Mighty_Surfboard.bmp", "Rect": "70,0,54,41", "Center": "26,21" }
+}

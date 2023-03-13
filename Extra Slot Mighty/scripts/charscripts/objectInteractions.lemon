@@ -1,0 +1,310 @@
+//# address-hook(0x034f6a) end(0x034fba)
+function void fn034f6a()
+{
+    if (objA1.flags2a & char.flag.IN_AIR)
+    {
+        return
+    }
+    base.fn034f6a()
+}
+
+// MGZ Spiker code that handles bouncing the player. First check which player is actually colliding. Do everything we can to call the base function also!
+//# address-hook(0x088d54) end(0x088d92)
+function void fn088d54()
+{
+	u32 D0backup = D0
+	u16 backupthing = u16[A0 + 0x44]
+	u8 backupthing2 = u8[A0 + 0x29]
+	fn085870()
+	
+	if (u8[A1 + 0x0d] & 0x02) // Mighty using drop down?
+	{
+		return
+	}
+
+	D0 = D0backup
+	u16[A0 + 0x44] = backupthing
+	u8[A0 + 0x29] = backupthing2
+
+	base.fn088d54()
+}
+
+// CNZ Clamer code that handles bouncing the player
+//# address-hook(0x0890aa) end(0x0890c4)
+function void fn0890aa()
+{
+	u32 D0backup = D0
+	u16 backupthing = u16[A0 + 0x44]
+	u8 backupthing2 = u8[A0 + 0x29]
+	fn085870()
+	
+	if (u8[A1 + 0x0d] & 0x02) // Mighty using drop down?
+	{
+		return
+	}
+	
+	D0 = D0backup
+	u16[A0 + 0x44] = backupthing
+	u8[A0 + 0x29] = backupthing2
+
+	base.fn0890aa()
+}
+
+// Collision function used by Blastoid, Jawz, Piranha, Mushmeani and Rockn
+//# address-hook(0x085732) end(0x08575e)
+function void fn085732()
+{
+	base.fn085732()
+	checkStayDroppingDown()
+}
+
+function void SpringVertical.updateInternal(bool flipY)
+{
+	if (global.xtrachar != 1)
+	{
+		base.SpringVertical.updateInternal(flipY)
+		return
+	}
+
+	u8 characterIndex = 0
+	while (characterIndex < 2)
+	{
+		D1.u16 = 27
+		D2.u16 = 8
+		D3.u16 = flipY ? 9 : 16
+		D4.u16 = objA0.position.x.u16
+		D6 = 0
+
+		u32 characterAddress = 0xffffb000 + characterIndex * 0x4a
+		u8 bitnum = 3 + characterIndex
+		if (fn01dcb6_internal(characterAddress, bitnum))
+		{
+			
+			if (u8[0xffffb000 + 0x0d] & 0x02)	// Mighty using drop down? Then check for collision twice.
+			{
+				D2.u16 = 2					// Also decrease the y-hitbox, to compensate for the double collision (?)
+				fn01df90()
+				fn01df90()
+			}
+			else
+			{
+				fn01df90()
+			}
+		}
+
+		if (flipY)
+		{
+			if (D4.u16 == 0xfffe)
+			{
+				SpringVerticalFlipped.ApplyToCharacter()
+			}
+		}
+		else
+		{
+			if ((objA0.flags2a >> bitnum) & 0x01)
+			{
+				SpringVertical.ApplyToCharacter()
+			}
+		}
+
+		++characterIndex
+	}
+
+	Object.animationUpdate(0x023722)
+	DrawOrUnloadObject()
+}
+
+//# address-hook(0x01d61a) end(0x01d61a)
+function void MonitorIntact.Render()
+{
+	// Don't do this for flipped monitors!
+	
+	bool can_drop = true
+	
+	// Frozen monitors in ICZR
+	if (global.zone == 0x05 && Mods.isModActive("Ice Cap Zone Redesigned") && !(objA0.value3b == 1 || objA0.value3b == 2))
+	{
+		can_drop = false
+	}
+	
+	// Conveyor monitors in LRZ Redesigned...
+	if (objA0.render_flags & render_flag.FLIP_X && global.zone == 0x09 && Mods.isModActive("Lava Reef Zone Redesigned"))
+	{
+		can_drop = false
+	}
+
+#if GAMEAPP >= 0x22081300 // Newer builds
+	if (!(GfxMightySmashing) || !(u8[A0 + 0x3c] == 0) || (objA0.velocity.y != 0))
+#endif
+
+#if GAMEAPP <= 0x22080701 // Older builds
+	if (!(GfxMightySmashing) || !(u8[A0 + 0x3c] == 0) || (objA0.flags2a & 0x02) || (objA0.velocity.y != 0))
+#endif
+	{
+		can_drop = false
+	}
+	
+	if (can_drop)
+	{
+		if (Mods.isModActive("Ice Cap Zone Redesigned") && global.zone == 0x05 && objA0.render_flags & render_flag.FLIP_X)
+		{
+			objA0.render_flags &= ~render_flag.FLIP_X
+			objA0.flags2a &= ~render_flag.FLIP_X
+		}
+		objA0.value42 = objA0.position.y.u16
+		
+		u8[A0 + 0x3c] = 1
+		objA0.velocity.y = -0x180
+		if (u8[A0 + 0x3c] == 0)
+			u8[A0 + 0x3c] = 4
+	}
+	base.MonitorIntact.Render()
+}
+
+//# address-hook(0x01d63a) end(0x01d694)
+function void fn01d63a()
+{
+	base.fn01d63a()
+	if ((global.zone != 0x00 && global.zone != 0x03 && !(char.flags & 1)) || (global.zone_act == 0x0001 && (objA0.position.x.u16 == 0x30e0 || objA0.position.x.u16 == 0x28e0)))
+	{
+		if (u8[A0 + 0x3c] != 0)
+		{
+			if (objA0.value42)
+			{
+				if (objA0.position.y.u16 > objA0.value42)
+				{
+					objA0.position.y.u16 = objA0.value42
+					objA0.velocity.y = 0
+					u8[A0 + 0x3c] = 0
+					objA0.value42 = 0
+				}
+			}
+		}
+	}
+}
+
+// Hammer Drop dust triggers mines
+//# address-hook(0x03c972) end(0x03c97e)
+function void fn03c972()
+{
+	if (MineGoBoom())
+		fn03c984()
+
+	base.fn03c972()
+}
+
+//# address-hook(0x03c9bc) end(0x03c9de)
+function void fn03c9bc()
+{
+	
+	if (MineGoBoom())
+		u16[A0 + 0x30] = 0
+
+	base.fn03c9bc()
+}
+
+function bool MineGoBoom()
+{
+	A1 = 0xffffb000
+    s16 count = 0x6d
+    while (count >= 0)
+    {
+
+        // Go to the next object
+        A1 += 0x4a
+        --count
+		if (objA1.update_address == 0x2000D4 || objA1.update_address == 0x2000D6)
+		{
+			// boom = true
+			return true
+		}
+    }
+	return false
+}
+
+// Deflect LRZ stalactites
+//# address-hook(0x010254)
+function void deflectProjectile()
+{
+	if (objA1.update_address == 0x0428d6 || objA1.update_address == 0x0856de)
+		objA1.value3e = 1
+	base.deflectProjectile()
+}
+
+//# address-hook(0x0428d6) end(0x0428fe)
+function void fn0428d6()
+{
+	if (objA0.value3e == 0)
+	{
+		base.fn0428d6()
+		return
+	}
+	else
+	{
+		objA0.countdown_value = 180
+		objA0.update_address = 0x1FF7C0
+		objA0.value3e = 0
+	}
+}
+
+//# address-hook(0x1FF7C0) end(0x1FF7E7)
+function void fn1FF7C0()
+{
+	UpdateMovementSimple()
+
+	if (global.framecounter.low & 0x01)
+		DrawObject()
+	--objA0.countdown_value
+	if (objA0.countdown_value < 0)
+	{
+		// Sadly, there isn't a good way of making the stalactices disappear and reappear
+		// if you off-screen their original location. So the best way to work around this was to
+		// send them to an unreachable part of the map. That way, the game can unload them without
+		// having to permanently erase them unless you restart the level.
+		if (!(objA0.render_flags & render_flag.VISIBLE))
+		{
+			objA0.velocity.x = 0
+			objA0.velocity.y = 0
+			objA0.position.x.u16 = 0
+			objA0.position.y.u16 = 0
+		}
+		DrawOrUnloadObject()
+	}
+}
+
+// Deflect ICZ falling icicles
+//# address-hook(0x085180) end(0x0851ae)
+function void fn085180()
+{
+	u16 dx = (objA0.position.x.u16 & 0xff80) - level.despawn_position.x
+	u16 dy = objA0.position.y.u16 - camera.position.y.u16 + 0x80
+	if (dx <= 0x0280 && dy <= 0x0200)
+	{
+		AddAsDynamicObject()
+		if (objA0.value3e == 1)
+		{
+			objA0.countdown_value = 180
+			objA0.update_address = 0x1FF810
+			objA0.value3e = 0
+		}
+		else
+			DrawObject()
+	}
+	else
+	{
+		Object.TriggerUnloading()
+	}
+}
+
+//# address-hook(0x1FF810) end(0x1FF818)
+function void fn1FF810()
+{
+	UpdateMovementSimple()
+	if (global.framecounter.low & 0x01)
+		DrawObject()
+	--objA0.countdown_value
+	// The falling icicles, on the other hand, do disappear,
+	// unless you restart the level
+	if (objA0.countdown_value < 0)
+		UnloadObject()
+}

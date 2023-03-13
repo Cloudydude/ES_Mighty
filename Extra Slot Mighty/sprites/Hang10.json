@@ -1,0 +1,23 @@
+{
+	"Hang_10_S3_0x00":  { "File": "Hang10_Mighty.bmp", "Rect": "0,2,7,4", "Center": "0,19" },
+	"Hang_10_S3_0x01":  { "File": "Hang10_Mighty.bmp", "Rect": "322,0,64,47", "Center": "32,23" },
+	"Hang_10_S3_0x02":  { "File": "Hang10_Mighty.bmp", "Rect": "257,2,64,45", "Center": "32,23" },
+	"Hang_10_S3_0x03":  { "File": "Hang10_Mighty.bmp", "Rect": "193,2,63,45", "Center": "31,22" },
+	"Hang_10_S3_0x04":  { "File": "Hang10_Mighty.bmp", "Rect": "128,2,64,45", "Center": "32,24" },
+	"Hang_10_S3_0x05":  { "File": "Hang10_Mighty.bmp", "Rect": "64,4,63,43", "Center": "32,23" },
+	"Hang_10_S3_0x06":  { "File": "Hang10_Mighty.bmp", "Rect": "0,1,63,46", "Center": "32,22" },
+	"Hang_10_S3_0x07":  { "File": "Hang10_Mighty.bmp", "Rect": "387,1,39,44", "Center": "18,20" },
+	"Hang_10_S3_0x08":  { "File": "Hang10_Mighty.bmp", "Rect": "427,1,41,44", "Center": "20,20" },
+	"Hang_10_S3_0x09":  { "File": "Hang10_Mighty.bmp", "Rect": "469,1,37,43", "Center": "20,19" },
+
+	"Hang_10_Mania_0x00":  { "File": "Hang10_Mighty_Mania.bmp", "Rect": "0,2,7,4", "Center": "0,19" },
+	"Hang_10_Mania_0x01":  { "File": "Hang10_Mighty_Mania.bmp", "Rect": "322,0,64,47", "Center": "32,23" },
+	"Hang_10_Mania_0x02":  { "File": "Hang10_Mighty_Mania.bmp", "Rect": "257,2,64,45", "Center": "32,23" },
+	"Hang_10_Mania_0x03":  { "File": "Hang10_Mighty_Mania.bmp", "Rect": "193,2,63,45", "Center": "31,22" },
+	"Hang_10_Mania_0x04":  { "File": "Hang10_Mighty_Mania.bmp", "Rect": "128,2,64,45", "Center": "32,24" },
+	"Hang_10_Mania_0x05":  { "File": "Hang10_Mighty_Mania.bmp", "Rect": "64,4,63,43", "Center": "32,23" },
+	"Hang_10_Mania_0x06":  { "File": "Hang10_Mighty_Mania.bmp", "Rect": "0,1,63,46", "Center": "32,22" },
+	"Hang_10_Mania_0x07":  { "File": "Hang10_Mighty_Mania.bmp", "Rect": "387,1,39,44", "Center": "18,20" },
+	"Hang_10_Mania_0x08":  { "File": "Hang10_Mighty_Mania.bmp", "Rect": "427,1,41,44", "Center": "20,20" },
+	"Hang_10_Mania_0x09":  { "File": "Hang10_Mighty_Mania.bmp", "Rect": "469,1,37,43", "Center": "20,19" }
+}

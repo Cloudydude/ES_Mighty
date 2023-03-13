@@ -1,0 +1,28 @@
+{
+	"Metadata":
+	{
+		"Name": "Mighty's Huds",
+		"Author": "MiaCDi, iCloudius",
+		"Description": "Changes Mighty's hud to be the Chaotix, Mania, or Megamix hud"
+	},
+	"Settings":
+	{
+		"List":
+		[
+			{
+				"InternalName": "Mighty hud",
+				"DisplayName": "Mighty's Huds",
+				"Variable": "Mighty_hud_type",
+				"DefaultValue": "2",
+				"Category": "Choices",				
+				"Options":
+				{
+					"0": "Default",
+					"1": "Mania",
+					"2": "Chaotix",
+					"3": "Megamix"
+				}
+			}
+		]
+	}
+}

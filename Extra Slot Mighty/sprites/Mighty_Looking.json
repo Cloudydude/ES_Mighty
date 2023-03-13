@@ -1,0 +1,15 @@
+{
+	"Mighty_Looking_up_0":  { "File": "Mighty_LookingUp.bmp", "Rect": "4,8,32,40", "Center": "19,20" },
+	"Mighty_Looking_up_1":  { "File": "Mighty_LookingUp.bmp", "Rect": "53,8,32,40", "Center": "19,20" },
+	"Mighty_Looking_up_2":  { "File": "Mighty_LookingUp.bmp", "Rect": "101,7,32,41", "Center": "20,21" },
+	"Mighty_Looking_up_3":  { "File": "Mighty_LookingUp.bmp", "Rect": "149,7,32,41", "Center": "20,21" },
+	"Mighty_Looking_up_4":  { "File": "Mighty_LookingUp.bmp", "Rect": "198,7,32,41", "Center": "20,21" },
+	"Mighty_Looking_up_5":  { "File": "Mighty_LookingUp.bmp", "Rect": "248,7,32,41", "Center": "20,21" },
+	"Mighty_Looking_up_6":  { "File": "Mighty_LookingUp.bmp", "Rect": "298,8,32,40", "Center": "19,20" },
+	"Mighty_Looking_up_7":  { "File": "Mighty_LookingUp.bmp", "Rect": "347,8,32,40", "Center": "18,20" },
+
+	"Mighty_Looking_down_0":  { "File": "Mighty_LookingDown.bmp", "Rect": "8,12,23,36", "Center": "10,16" },
+	"Mighty_Looking_down_1":  { "File": "Mighty_LookingDown.bmp", "Rect": "57,12,32,36", "Center": "10,16" },
+	"Mighty_Looking_down_2":  { "File": "Mighty_LookingDown.bmp", "Rect": "103,16,32,32", "Center": "13,12" },
+	"Mighty_Looking_down_3":  { "File": "Mighty_LookingDown.bmp", "Rect": "152,16,32,32", "Center": "13,12" }
+}

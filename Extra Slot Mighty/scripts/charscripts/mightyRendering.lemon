@@ -1,0 +1,680 @@
+define u8 MightyFrameCounter = u8[0xffffF5C0 + ((A0 == 0xffffb000) ? 0 : 0x02)] //This controls custom animation frames for mighty's drop, wall hang, or looking up animation
+define u16 MightyXCollision = u16[0xffffcfcc + ((A0 == 0xffffb000) ? 0 : 0x02)]
+define u16 MightyYCollision = u16[0xffffcfce + ((A0 == 0xffffb000) ? 0 : 0x02)]
+define u16 Held_Bounce = u16[0xffffF608 + ((A0 == 0xffffb000) ? 0 : 0x02)]
+define u8 MightyCollisionTimer = u8[A0 + 0x0f]
+define u8 MightyWallCollision = u8[A0 + 0x0b]
+define u8 MightyDustControl = u8[0xffffFFEC + ((A0 == 0xffffb000) ? 0 : 0x02)]
+
+define u8 FreeFall = u8[0xffffE656 + ((A0 == 0xffffb000) ? 0 : 0x01)]
+define u8 Force_Fall = u8[0xffffF735 + ((A0 == 0xffffb000) ? 0 : 0x01)]
+define u8 Should_fall_anim = u8[0xffffF737 + ((A0 == 0xffffb000) ? 0 : 0x01)]
+define u8 Fall_Anim_Corkscrew = u8[0xffffF739 + ((A0 == 0xffffb000) ? 0 : 0x01)]
+define u8 SuperFall = u8[0xffffF73B + ((A0 == 0xffffb000) ? 0 : 0x01)]
+
+global u8 MightyFrameCounter_down //This controls custom animation frames for mighty's looking down animation 
+// global bool MightyWallLatch -> u8[A0 + 0x0d] & 0x40
+// global bool MightyDropDown -> u8[A0 + 0x0d] & 0x02
+global bool MightyBounced
+global bool MightyWasRolling
+global u8 MightySpikeCollision //I need to know the direction he hit so that he can bounce correctly
+// global bool MightyWallJump -> u8[A0 + 0x2a] & 0x80
+global u8 MightyPalette
+global bool Mighty.KillOnScreen //v1.11 to fix the bug on spikes I need to kill after mighty bounces
+global u16 Mighty.KnuxStage //to track the path in AIZ2 and ICZ2
+global u8 Mighty_Smooth_type
+global bool MightyWasDropin // was he doing the hammer drop? He might have been.
+global bool BubbleDrop
+global bool RollingIntoSpikes
+
+global u8 Mighty_Twirl_Fall
+global u8 Mighty_Transform_Fall
+global u8 Mighty_Level_Transition_Fall
+global u8 Mighty_Uncurled_Fall
+
+function void ExtraChar.drawCharacterSprite_char1()
+{
+	u64 key = pop()
+	bool asSmallGhost = pop()
+	s16 py = s16(pop())
+	s16 px = s16(pop())
+	u8 variant = pop()
+	u8 character = pop()
+
+	bool isPlayer1 = (variant == 0)
+	u32 characterAddress = isPlayer1 ? 0xffffb000 : 0xffffb04a
+	u8 animationSprite = char.animation.sprite
+	u16 animationSpriteEx = Standalone.getModdedAnimationSpriteEx(character, animationSprite)
+	u8 flags = (char.render_flags & 0x03)
+	u8 angle = 0
+
+	u8 rotationMode = 0
+	u8 Smooth_ctrl = (Mighty_Smooth_type == 0) ? 2 : 1
+	u64 Spritekey = (Mighty_Sprite_type == 0) ? "m" : "S3_m"
+	
+	//no block for tails' tails
+	if (level.vertical_wrap == 0xff00)
+	{
+		// For vertically wrapping levels, "normalize" py into interval [-move_area.bottom.target * 3/4, -move_area.bottom.target * 1/4]
+		py &= level.height.bitmask
+		if (py > move_area.bottom.target * 3/4 && move_area.bottom.target >= 0xe0)	// move_area.bottom.target is very low in DEZ boss act
+			py -= move_area.bottom.target
+	}
+
+	if (variant < 2)
+	{//It's a character, not Tails' Tails
+	
+		if (Game.getSetting(SETTING_SMOOTH_ROTATION))
+		{
+			// Character
+			if (animationSprite >= 0x01 && animationSprite <= 0x20)
+			{
+				animationSprite = 0x01 + (animationSprite - 0x01) % 8
+				rotationMode = Smooth_ctrl
+			}
+			else if (animationSprite >= 0x21 && animationSprite <= 0x30)
+			{
+				animationSprite = 0x21 + (animationSprite - 0x21) % 4
+				rotationMode = Smooth_ctrl
+			}
+			else if (animationSprite >= 0x78 && animationSprite <= 0x7f)
+			{
+				animationSprite = 0x78
+				rotationMode = 2
+			}
+
+			if (rotationMode != 0)
+			{
+				s8 oldRotation = isPlayer1 ? oldRotationPlayer1 : oldRotationPlayer2
+				flags = char.flags & char.flag.FACING_LEFT		// This really has to be "char.flags", not "char.render_flags"
+
+				angle = char.rotation
+				if (rotationMode == 1)
+				{
+					if (abs(s8(char.rotation)) <= 0x10 && abs(s8(oldRotation)) <= 0x10)
+					{
+						angle = 0
+					}
+
+					if (angle != char.rotation)
+					{
+						s8 diff = angle - oldRotation
+						angle = oldRotation + clamp(diff, -3, 3)
+					}
+				}
+			}
+
+			if (isPlayer1)
+				oldRotationPlayer1 = angle
+			else
+				oldRotationPlayer2 = angle
+		}
+
+		//CUSTOM ANIMATIONS FOR MIGHTY
+		// HANDLES DROP DOWN, CLIMB, HIGH SPEED and FLOAT when transformed
+		// Mighty has a lot of sprites that need to be replaced and snapped if smooth rotation is disabled
+		// Angle snapper for all the missing sprites
+		else // Fake genesis rotation
+		{
+			//WALK
+			if (animationSprite >= 0x01 && animationSprite <= 0x20)
+			{
+				angle = (animationSprite - 0x01) / 8 * 0xe0 * ((global.inv_gravity) ? -1 : 1)
+				if (char.flags & char.flag.FACING_LEFT)
+					angle = -angle
+				animationSprite = 0x01 + (animationSprite - 0x01) % 8
+			}
+			//RUN
+			else if (animationSprite >= 0x21 && animationSprite <= 0x30)
+			{
+				angle = (animationSprite - 0x21) / 4 * 0xe0 * ((global.inv_gravity) ? -1 : 1)
+				if (char.flags & char.flag.FACING_LEFT)
+					angle = -angle
+				animationSprite = 0x21 + (animationSprite - 0x21) % 4
+			}
+			//Hanging in AIZ
+			else if (animationSprite >= 0x78 && animationSprite <= 0x7f)
+			{
+				angle = (animationSprite - 0x78) * 0xe0 * ((global.inv_gravity) ? -1 : 1)
+				if (char.flags & char.flag.FACING_LEFT)
+					angle = -angle
+				animationSprite = 0x78
+			}
+			//Hanging in MHZ
+			else if (animationSprite >= 0xeb && animationSprite <= 0xee)
+			{
+				angle = (animationSprite - 0xeb) * 0xe0 * ((global.inv_gravity) ? -1 : 1)
+				if (char.flags & char.flag.FACING_LEFT)
+					angle = -angle
+				animationSprite = 0xeb
+			}
+		}
+					
+		//RUN - Fastrun - Flight
+		if (animationSprite >= 0x21 && animationSprite <= 0x30)
+		{				
+			if ((abs(char.groundspeed) >= 0x700) || (sonic.fastrunanim.timer > 0))
+			{
+				if ((Game.getSetting(SETTING_SUPERFAST_RUNANIM) && !super.active && abs(char.groundspeed) >= 0x0d00) || char.spindash == 0x80)
+				{//FAST RUN - ALL DIRECTIONS															
+					animationSpriteEx = CHAR_ANIMSPRITE_SONIC_PEELOUT + (level.framecounter & 0x03)
+					key = stringformat("%sighty_fastrun_%d", Spritekey, animationSpriteEx - CHAR_ANIMSPRITE_SONIC_PEELOUT)					
+				}
+				else if (super.active)
+				{ //SUPER FLOAT
+					animationSpriteEx = CHAR_ANIMSPRITE_SONIC_PEELOUT + ((level.framecounter>>1) & 0x01)
+					key = stringformat("%sighty_fly_%d", Spritekey, animationSpriteEx - CHAR_ANIMSPRITE_SONIC_PEELOUT)										
+				}
+			}
+		}
+		
+		//DROP DOWN
+		if (u8[A0 + 0x0d] & 0x02 || BubbleDrop)
+		{
+			//interrupt animation if not spinning or speed = 0
+			if (char.state == char.state.ROLLING && char.velocity.y > 0)
+			{
+				//windup
+				if (MightyFrameCounter < 4)
+				{
+					key = stringformat("%sighty_windup_%d", Spritekey, MightyFrameCounter)				
+					MightyFrameCounter = MightyFrameCounter + 1
+				}
+				else //drop frames
+				{
+					animationSpriteEx = (level.framecounter >> 1) & 0x03
+					key = stringformat("%sighty_drop_%d", Spritekey, animationSpriteEx)
+				}
+			}
+			else
+			{
+				u8[A0 + 0x0d] &= ~0x02
+				BubbleDrop = false
+				MightyFrameCounter = 0
+			}
+		}
+		
+		//BOUNCING ON SPIKES
+		//objA1.state = char.state.FALLING_PANIC
+		if (MightyBounced)
+		{
+			if (char.state == char.state.FALLING_PANIC)
+			{
+				if (MightyWasDropin && !Bounce_off)
+				{
+					char.velocity.y = -0x400
+					char.velocity.x = (char.flags & char.flag.FACING_LEFT) ? -0x200 : 0x200
+					if (char.velocity.x>0 || (char.velocity.x = 0 && !(char.flags & char.flag.FACING_LEFT) ))
+					{
+						char.velocity.x = -0x200
+					}
+					else if (char.velocity.x <=0)
+					{
+						char.velocity.x = 0x200
+					}
+
+					if (char.flags & char.flag.UNDERWATER)//much weaker underwater
+					{
+						char.velocity.x = char.velocity.x/2
+						char.velocity.y = char.velocity.y/2
+					}
+
+					char.base_state = 0x04
+					Character.LandingOnGroundNoSpindash()
+					char.flags |= char.flag.IN_AIR
+
+					char.groundspeed = 0
+					char.state = char.state.GOT_HURT
+					// char.invuln.countdown = 90
+					playSound(0x37)
+				}
+				else
+				{
+					//uncurl
+					if (MightyFrameCounter < 9)
+					{
+						key = stringformat("%sighty_uncurl_%d", Spritekey, MightyFrameCounter/3)				
+						MightyFrameCounter = MightyFrameCounter + 1
+					}
+					else //falling
+					{
+						animationSpriteEx = (level.framecounter >> 2) & 0x01
+						key = stringformat("%sighty_bounced_%d", Spritekey, animationSpriteEx)
+					}
+				}	
+			}
+			else
+			{
+				MightyFrameCounter = 0
+				MightyWasDropin = false
+				MightyBounced = false
+			}
+			
+		}
+
+		//WALL LATCH
+		if (u8[A0 + 0x0d] & 0x40)
+		{
+			//if (char.state==char.state.ROLLING) // originally 
+			if (char.state == char.state.RUNNING)
+			{
+				key = stringformat("%sighty_wallLatch", Spritekey, 0)
+				// if (MightyWallCollision == 1) // right
+				// 	key = stringformat("%sighty_wallLatch", Spritekey, 0)
+				// else // left
+				// 	key = stringformat("%sighty_wallLatchLeft", Spritekey, 0)
+				char.rotation.x = 0
+				char.flags2d = 0
+				angle = 0
+				char.rotation = 0
+			}
+			else    //1.9 fix - WALL LATCH BROKEN BY SOMETHING
+			{
+				ForceDetatchfromWall()
+			}
+		}
+		
+		timeattack.animSpriteEx = animationSpriteEx
+
+		if (key == 0)
+		{
+
+			key = (Mighty_Sprite_type == 0) ? stringformat("character_slot1_0x%02x", animationSprite) : stringformat("character_slot1_S3_0x%02x", animationSprite)
+
+			if (!Renderer.hasCustomSprite(key))
+			{
+				u32 sourceBase    = (character == CHARACTER_SONIC) ? ((animationSprite >= 0xda) ? 0x140060 : 0x100000) : (character == CHARACTER_TAILS) ? ((animationSprite >= 0xd1) ? 0x143d00 : 0x3200e0) : 0x1200e0
+				u32 tableAddress  = (character == CHARACTER_SONIC) ? (super.active ? 0x148378 : 0x148182) : (character == CHARACTER_TAILS) ? 0x14a08a : 0x14bd0a
+				u32 mappingOffset = (character == CHARACTER_SONIC) ? (super.active ? 0x146816 : 0x146620) : (character == CHARACTER_TAILS) ? 0x148eb8 : 0x14a8d6		// Not really necessary here, we could also use "char.mapping_offset"
+
+				key = Renderer.setupCustomCharacterSprite(sourceBase, tableAddress, mappingOffset, animationSprite, 0x00)
+			}
+		}
+	}
+	else // Tails' tails
+	{
+		//who cares, mighty has no tails!
+	}
+
+	// Mania looking animations
+	if (Mighty_Sprite_type == 0 && !MightyBounced && !(u8[A0 + 0x0d] & 0x40) && !(u8[A0 + 0x0d] & 0x02) && !BubbleDrop)
+	{
+		if ((animationSprite >= 0xc3) && (animationSprite <= 0xc4)) // looking up
+		{
+			MightyFrameCounter_down = 0
+			if (MightyFrameCounter < 15)
+			{
+				key = stringformat("Mighty_Looking_up_%d", MightyFrameCounter/3)
+				++MightyFrameCounter
+			}
+			else if (MightyFrameCounter >= 15)
+			{
+				MightyFrameCounter = 15
+				key = "Mighty_Looking_up_4"
+			}				
+		}
+		else if ((animationSprite >= 0x9b) && (animationSprite <= 0x9c)) // ducking
+		{
+			MightyFrameCounter = 0
+			if (MightyFrameCounter_down < 10)
+			{
+				key = stringformat("Mighty_Looking_down_%d", MightyFrameCounter_down/3)
+				++MightyFrameCounter_down
+			}
+			else if (MightyFrameCounter_down >= 10)
+			{
+				MightyFrameCounter_down = 10
+				key = "Mighty_Looking_down_3"
+			}		
+		}
+		else if (char.state == char.state.STANDING)
+		{
+			if (MightyFrameCounter >= 15 && MightyFrameCounter <= 23)
+			{
+				key = stringformat("Mighty_Looking_up_%d", MightyFrameCounter/3)
+				++MightyFrameCounter
+			}
+			else if (MightyFrameCounter_down >= 5)
+			{
+				key = stringformat("Mighty_Looking_down_%d", MightyFrameCounter_down/3)
+				MightyFrameCounter_down -= 5
+			}
+			else
+			{
+				MightyFrameCounter = 0
+				MightyFrameCounter_down = 0
+			}
+		}
+		else
+		{
+			MightyFrameCounter = 0
+			MightyFrameCounter_down = 0
+		}
+	}
+
+	if (char.state == char.state.TRANSFORMING)
+	{
+		if (Mighty_Transform_Fall)
+			SuperFall = true
+		else
+			Should_fall_anim = true
+	}
+
+	if (Mighty_Twirl_Fall != 1 && (char.state == 0x31 || Fall_Anim_Corkscrew) && (char.flags & char.flag.IN_AIR))
+	{
+		Should_fall_anim = true
+	}
+
+	if (Mighty_Twirl_Fall == 1 && (char.state.former == char.state.STRAIGHTJUMP && char.state == char.state.RUNNING) || (Mighty_Uncurled_Fall == 1 && char.state.former == char.state.STRAIGHTJUMP && char.state == char.state.RUNNING))
+		FreeFall = 1
+
+	bool eggmobile_LBZ2 = (global.zone_act == 0x0601 && u8[0xfffff7ff] == 0xff)
+	bool After_Transforming = (Mighty_Transform_Fall && (char.state == char.state.RUNNING) && char.velocity.y >= 0 && SuperFall)
+	bool After_A_Spring_Twirl = (Mighty_Twirl_Fall == 1 && (FreeFall == 1 || Fall_Anim_Corkscrew) && char.velocity.y >= 0)
+	bool Level_Transitions = (Mighty_Level_Transition_Fall == 1 && FreeFall == 1)
+	bool chars_run = (char.state == char.state.RUNNING && Mighty_Uncurled_Fall == 1 && (char.animation.sprite < 0x31))
+	bool chars_states = (char.state == char.state.STANDING || char.state == char.state.LOOKING_UP || char.state == char.state.COWERING)
+	bool While_Uncurled = (Mighty_Uncurled_Fall == 1 && !Should_fall_anim && ((chars_run || chars_states || char.state == char.state.FALLING_PANIC) && (char.flags & char.flag.IN_AIR) && (FreeFall || char.velocity.y >= 282) && char.protection_flag == 0 && !eggmobile_LBZ2 && char.spindash != 0x80))
+	bool End_of_Level_Falling_Fix = (Mighty_Level_Transition_Fall == 1 && Force_Fall)
+
+	if (char.state == 0x31 || Mighty_Twirl)
+	{
+		angle = 0
+		if ((char.base_state == 0x04 || char.base_state == 0x06) && Mighty_Twirl)
+		{
+			Mighty_Twirl = false
+			FreeFall = 0
+		}
+
+		// Mania = 2			   Sonic 3 = 8
+		if (char.animation.timer > ((Mighty_Sprite_type == 0) ? 2 : 8))
+		{
+			char.animation.timer = ((Mighty_Sprite_type == 0) ? 2 : 8)
+		}
+		if (char.animation.timer == 0)
+		{
+			char.animation.timer = ((Mighty_Sprite_type == 0) ? 2 : 8)
+			++char.animation.frame
+		}
+		if (char.velocity.y >= 0)
+		{
+			Mighty_Twirl = false
+			if (Mighty_Twirl_Fall == 1)
+				FreeFall = 1
+			char.state = char.state.RUNNING
+			char.animation.frame = 0
+		}
+		// Mania = 10			   Sonic 3 = 5
+		if (char.animation.frame >= ((Mighty_Sprite_type == 0) ? 10 : 5))
+		{
+			char.animation.frame = 0
+		}
+		key = (Mighty_Sprite_type == 0) ? stringformat("mania_mighty_springtwirl_%d", char.animation.frame) : stringformat("s3mighty_springtwirl_%d", char.animation.frame)
+		// Mania = 2			   Sonic 3 = 6
+		if (char.animation.timer > ((Mighty_Sprite_type == 0) ? 2 : 6))
+		{
+			char.animation.timer = ((Mighty_Sprite_type == 0) ? 2 : 6)
+		}
+	}
+	if (tails.carrying == 1 || char.state == char.state.HANGING || ((char.control_flags & 0x01) && !Mighty_ShowFall) || char.state == char.state.DIED || (char.flags & char.flag.ON_OBJECT) || char.rotation.x != 0 || char.base_state == 0x04 || char.base_state == 0x06)
+	{
+		SuperFall = false
+		FreeFall = 0
+		Held_Bounce = 0
+	}
+	else if ( (char.state != char.state.ROLLING && (After_Transforming || After_A_Spring_Twirl || Level_Transitions || While_Uncurled)) || End_of_Level_Falling_Fix)
+	{
+		animationSpriteEx = (level.framecounter >> 2) & 0x01
+		key = stringformat("%sighty_bounced_%d", Spritekey, animationSpriteEx)
+	}
+
+
+	u16 renderQueue = 0xa000 - char.sprite_priority
+	u8 atex = (char.sprite_attributes >> 9) & 0x30
+	if (EXTENDED_CHARACTER_PALETTES)
+		atex = 0x40 + character * 0x20
+
+	if (char.sprite_attributes & 0x8000)
+		flags |= SPRITE_FLAG_PRIO
+
+	if (rotationMode != 0 && global.inv_gravity)
+	{
+		// Correction for inverse gravity
+		angle = 128 - angle
+		flags ^= SPRITE_FLAG_FLIP_X
+	}
+
+	if ((char.state == 0x34 || char.state == 0x35) && global.zone == 0x05)
+	{
+		py -= 4
+
+		key = stringformat((Mighty_Sprite_type == 0) ? "I_was_frozen_today_%d" : "I_was_also_frozen_today_%d", (char.state == 0x35) ? 1 : 0)
+
+		if Renderer.hasCustomSprite(key)
+        {
+            Renderer.drawCustomSprite(key, px, py, atex, 0, renderQueue)
+			push(true)
+			return
+            // return true
+        }
+	}
+
+	// Render character
+	if (asSmallGhost)
+	{
+		Renderer.drawCustomSprite(key, px, py, atex, flags | SPRITE_FLAG_PRIO, 0xa800, angle, 0xc0ffffff, 0x8000)
+	}
+	else
+	{
+		Renderer.drawCustomSprite(key, px, py, atex, flags, renderQueue, angle, 255)
+	}
+
+	bool useAfterImages
+	if (isPlayer1)
+	{
+		//Handle mighty's drop as well
+		if ((super.active == 0xff) || (super.active.tails == 0xff) || (u8[A0 + 0x0d] & 0x02) || (BubbleDrop))
+		{
+			useAfterImages = true
+		}
+		else
+		{
+			if (Game.getSetting(SETTING_SPEEDUP_AFTERIMGS))
+			{
+				useAfterImages = ((u8[characterAddress + 0x2b] & char.bonus.SPEED_UP) != 0)
+			}
+		}
+	}
+
+	if (useAfterImages)
+	{
+		// Additional offset for Sonic charging a Super Peel-Out (either Hyper Sonic or with Speed Shoes)
+		s16 afterImagesOffsetX = 0
+		if (char.character == CHARACTER_SONIC && char.spindash == 0x80)
+		{
+			afterImagesOffsetX = (char.groundspeed >> 7) * ((char.flags & char.flag.FACING_LEFT) ? 1 : -1)
+		}
+
+		for (s8 i = 3; i > 0; --i)
+		{
+			A1 = 0xffffe500 + u8(posbackup.offset.player1 - (i * 8 + 4))
+			s16 px0 = u16[A1] - camera.foreground.x.u16 + (i * afterImagesOffsetX / 4)
+			s16 py0 = u16[A1+2] - camera.foreground.y.u16
+			Renderer.drawCustomSprite(key, px0, py0, atex, flags, renderQueue - i, angle, 192 - i * 32)
+		}
+	}
+
+	// Prevent emulator-like rendering
+	push(true)
+	return
+	// return true
+}
+
+global bool Mighty_Grays
+
+global bool playitloud = true
+
+function void UpdateGamePause()
+{
+	if (Fixdamodorder)
+	{
+		Renderer.drawCustomSprite("Notepad", 0, 0, 0x00, SPRITE_FLAG_PRIO, 0xffff)
+		if ((control.pad1.pressed != 0) || (level.framecounter > 60 * 60)) // if the player touches a button or 60 seconds pass, then return to the main menu
+		{
+			Game.returnToMainMenu()
+			return
+		}
+	}
+	else if (Mods.getModPriority("Sonic 3: D.A. Garden Edition") > Mods.getModPriority("Extra Character Slots"))
+	{// D.A. Garden overwrites initializeMainGame() so if the 1st line of defense fails, this gets triggered
+		Renderer.drawCustomSprite("Notepad", 0, 0, 0x00, SPRITE_FLAG_PRIO, 0xffff)
+		if (playitloud)
+		{
+			Audio.playAudio("Tenma", AudioContext.CONTEXT_MUSIC)
+			playitloud = false
+		}
+		else if ((control.pad1.pressed != 0) || (level.framecounter > 60 * 60))
+		{
+			playitloud = true
+			Game.returnToMainMenu()
+			return
+		}
+	}
+    base.UpdateGamePause()
+}
+
+function void loadCharacterPalette(u8 character, u32 targetAddress, u8 paletteVariant)
+{
+    base.loadCharacterPalette(character, targetAddress, paletteVariant)
+	if (global.zone_act != 0x0d01 && global.game_mode == 0x8c && !competition_mode.active)
+		zeroMemory(0x802240, 0x120)
+
+	if (!competition_mode.active && (global.zone_act == 0x0d01 || global.game_mode == 0x4c || global.game_mode == 0x44 || global.game_mode == 0x50 || global.game_mode == 0x3c || global.game_mode == 0xc0 || global.game_mode == 0x40 || global.game_mode == 0x38 || global.game_mode == 0x2c || global.game_mode == 0x30)) // incase there's something overwriting Mighty's palette
+	{
+		zeroMemory(0x802240, 0x40)
+		u16 numColors = System.loadExternalPaletteData(getCharacterPaletteKey(3), paletteVariant, 0x800000, 0x20)
+		for (u8 i = 0; i < numColors; ++i)
+		{
+			u32 rgba = u32[0x800000 + i * 4]
+			u16[0x802240 + i * 2] = packColorExt(rgba)
+		}
+		ExtraChar.loadCharacterPalette(0x01, 0x802080 + u32(0x01 * 0x40), 0x00)
+		ExtraChar.loadSpecialPalettes(0x01, 0x802080 + u32(0x01 * 0x40), 0x00)
+		Mightys_Grays()
+	}
+
+	if (global.game_mode == 0x8c && global.xtrachar == 1 && (targetAddress == 0x802180 || targetAddress == 0x802480))
+	{
+		ExtraChar.loadSpecialPalettes(0x01, targetAddress, paletteVariant)
+	}
+}
+
+function void Mightys_Grays()
+{
+	if (Mighty_Grays == 1 && (MightyPalette != 0 || MightyPalette != 4 || MightyPalette != 5))
+	{
+		u16[0x802240 + 2 * 12] = 0x0ecc
+		u16[0x802240 + 2 * 13] = 0x0caa
+		u16[0x802240 + 2 * 14] = 0x0866
+	}
+}
+
+// Origins SSZ parity mod compatibility 
+
+function void XtraInClaw()
+{
+	if (global.xtrachar == 1)
+	{
+		MightyWasDropin = false
+		s16[A1 + 0x1a] = 5 // velocity.y
+	}
+	base.XtraInClaw()
+}
+
+function void XtraEscape()
+{
+	if (global.xtrachar == 1)
+	{
+		A1 = 0xffffb000
+		u8[A1 + 0x20] = char.state.ROLLING
+		u8[A1 + 0x0d] |= 0x02
+		// objA0.position.x.u16 = objA1.position.x.u16
+		// objA0.position.y.u16 = objA1.position.y.u16
+		objA0.velocity.x = 0
+		objA0.velocity.y = 0x999
+
+		playSound(SFX_SPINDASH_RELEASE)
+
+		return
+	}
+	base.XtraEscape()
+}
+
+
+function bool XtraOnGround()
+{
+	if (global.xtrachar == 1)
+	{
+		Mightybreaksout()
+		return true
+	}
+	return base.XtraOnGround()
+}
+
+function void Mightybreaksout()
+{
+
+	UpdateMovementStraightSimple()
+	A1 = 0xffffb000
+	objA1.position.x.u16 = objA0.position.x.u16
+	objA1.position.y.u16 = objA0.position.y.u16
+	D0.u16 = objA0.position.x.u16
+
+	CheckGroundCollision()
+	// u8[A1 + 0x0d] |= 0x02
+
+	if (D1.u16 > 23)
+	{
+		u8[0xffffb000 + 0x20] = char.state.FALLING_PANIC
+		if (objA0.velocity.y > 0x900)
+		{
+			u8[0xffffb000 + 0x2e] = 0
+			StopObjectA1()
+
+			objA0.velocity.y = -0x400
+			objA0.velocity.x = 0x300
+
+			MightySpikeCollision = 0
+			objA1.flags2a |= char.flag.IN_AIR// | char.flag.ROLLING)
+
+			MightyBounced = true
+			u8[0xffffb000 + 0x34] = 30 // post hit invincibility
+			PlayspikebounceSFX()
+
+			player1.control_override = 0xff // Disable P1's controls
+		}
+		else if (u16[0xffffb000 + 0x14] <= 0x44A)
+		{
+			objA0.velocity.y += 0x5c
+		}
+	}
+	else if (D1.u16 <= 14)
+	{
+		u8[0xffffb000 + 0x20] = char.state.RUNNING
+		control.player1 = 0x0808
+		objA0.velocity.y = 0
+		s16[0xffffb000 + 0x1c] = objA0.velocity.x = 0x600
+		u16[0xffffb000 + 0x14] = 0x4ac
+	}
+
+	if (D0.u16 < level.bossarea.right)
+		return
+	
+	player1.control_override = 0
+
+	objA0.update_address = 0x07ccb0
+	objA0.countdown_value = 0x06
+	objA0.velocity.x = 0
+	objA0.velocity.y = 0
+	objA0.hitbox_extends.y = 0x13
+}

@@ -1,0 +1,25 @@
+{
+	"bluesphere_slot1_0x01":  { "File": "bluesphere_mighty.bmp", "Rect": "0,8,31,41", "Center": "16,36" },
+	"bluesphere_slot1_0x02":  { "File": "bluesphere_mighty.bmp", "Rect": "33,7,29,45", "Center": "15,40" },
+	"bluesphere_slot1_0x03":  { "File": "bluesphere_mighty.bmp", "Rect": "65,3,28,49", "Center": "14,41" },
+	"bluesphere_slot1_0x04":  { "File": "bluesphere_mighty.bmp", "Rect": "98,2,28,50", "Center": "14,41" },
+	"bluesphere_slot1_0x05":  { "File": "bluesphere_mighty.bmp", "Rect": "130,0,31,54", "Center": "16,43" },
+	"bluesphere_slot1_0x06":  { "File": "bluesphere_mighty.bmp", "Rect": "163,3,28,49", "Center": "15,41" },
+	"bluesphere_slot1_0x07":  { "File": "bluesphere_mighty.bmp", "Rect": "194,2,28,50", "Center": "15,41" },
+	"bluesphere_slot1_0x08":  { "File": "bluesphere_mighty.bmp", "Rect": "224,0,31,54", "Center": "16,43" },
+	"bluesphere_slot1_0x09":  { "File": "bluesphere_mighty.bmp", "Rect": "260,12,24,30", "Center": "12,38" },
+	"bluesphere_slot1_0x0a":  { "File": "bluesphere_mighty.bmp", "Rect": "291,12,26,31", "Center": "13,38" },
+	"bluesphere_slot1_0x0b":  { "File": "bluesphere_mighty.bmp", "Rect": "323,13,26,30", "Center": "13,37" },
+	
+	"bluesphere_slot1_S3_0x01":  { "File": "S3_bluesphere_mighty.bmp", "Rect": "1,8,31,40", "Center": "16,35" },
+	"bluesphere_slot1_S3_0x02":  { "File": "S3_bluesphere_mighty.bmp", "Rect": "33,4,29,45", "Center": "15,40" },
+	"bluesphere_slot1_S3_0x03":  { "File": "S3_bluesphere_mighty.bmp", "Rect": "65,4,29,48", "Center": "15,40" },
+	"bluesphere_slot1_S3_0x04":  { "File": "S3_bluesphere_mighty.bmp", "Rect": "99,3,28,51", "Center": "14,42" },
+	"bluesphere_slot1_S3_0x05":  { "File": "S3_bluesphere_mighty.bmp", "Rect": "131,0,30,54", "Center": "15,44" },
+	"bluesphere_slot1_S3_0x06":  { "File": "S3_bluesphere_mighty.bmp", "Rect": "163,4,29,48", "Center": "16,40" },
+	"bluesphere_slot1_S3_0x07":  { "File": "S3_bluesphere_mighty.bmp", "Rect": "195,3,28,51", "Center": "14,42" },
+	"bluesphere_slot1_S3_0x08":  { "File": "S3_bluesphere_mighty.bmp", "Rect": "224,0,30,54", "Center": "16,44" },
+	"bluesphere_slot1_S3_0x09":  { "File": "S3_bluesphere_mighty.bmp", "Rect": "256,12,32,32", "Center": "16,38" },
+	"bluesphere_slot1_S3_0x0a":  { "File": "S3_bluesphere_mighty.bmp", "Rect": "288,12,32,32", "Center": "16,38" },
+	"bluesphere_slot1_S3_0x0b":  { "File": "S3_bluesphere_mighty.bmp", "Rect": "320,12,32,32", "Center": "16,38" }
+}

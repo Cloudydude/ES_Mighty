@@ -1,0 +1,553 @@
+global bool Mighty.Levels
+
+function bool ExtraChar.LevelManager.EnableCustomLevels(u8 extrachar)
+{
+	if (extrachar == 0x01)
+		return Mighty.Levels
+	
+	return base.ExtraChar.LevelManager.EnableCustomLevels(extrachar)
+}
+
+// function void ExtraChar.LevelManager.LoadCustomPalettes(u8 extrachar, u16 zoneAndAct)
+// {
+// 	// Mighty ckeck
+// 	if (extrachar == 0x01)
+// 	{
+// 		if (zoneAndAct == 0x0000)
+// 		{
+// 			System.loadExternalRawData("aiz_mighty_test", 0xA8B7C)
+// 		}
+// 	}
+	
+// 	// Call the base function
+// 	base.ExtraChar.LevelManager.LoadCustomPalettes(extrachar, zoneAndAct)
+// }
+
+function void ExtraChar.LevelManager.LoadCustomChunks(u8 extrachar, u16 zoneAndAct)
+{
+	if (extrachar == 0x01)
+	{
+		if (zoneAndAct == 0x0901)
+		{
+			System.loadExternalRawData("lrz2_mighty_chunks", 0x1bc738)
+		}
+	}
+	
+	base.ExtraChar.LevelManager.LoadCustomChunks(extrachar, zoneAndAct)
+}
+
+function u32 ExtraChar.LevelManager.loadRawLevelData(string format, u16 zoneAndAct, u32 targetAddress)
+{
+	if (global.xtrachar == 0x01 && (ExtraChar.LevelManager.EnableCustomLevels(0x01)))
+	{
+		if (zoneAndAct == 0x0001)
+		{
+			if (!((camera.position.x.u16 > 0x1040 && camera.position.x.u16 < 0x1140 && camera.position.y.u16 > 0x3b0) || (camera.position.x.u16 > 0x1f00 && camera.position.x.u16 < 0x2000 && camera.position.y.u16 > 0x570) || (camera.position.x.u16 > 0x3500 && camera.position.y.u16 > 0x860) || (camera.position.x.u16 > 0x3200 && camera.position.y.u16 > 0x820)))
+			{
+				return 0x00
+			}
+			else
+			{
+				prevent_water = 1
+				water.height.current = 0x9000
+			}
+		}
+	}
+	
+	// Return the base function
+	return base.ExtraChar.LevelManager.loadRawLevelData(format, zoneAndAct, targetAddress)
+}
+
+function u32 Game.getSetting(u32 settingId)
+{
+	if (global.xtrachar == 0x01 && (ExtraChar.LevelManager.EnableCustomLevels(0x01)))
+	{
+		if (settingId == SETTING_LEVELLAYOUTS && global.zone == 0x00)
+			return 2
+	}
+	
+	return base.Game.getSetting(settingId)
+}
+
+// Not quite a renderhook. Changes the waterfall sprites
+function void Renderer.drawVdpSprite(s16 px, s16 py, u8 encodedSize, u16 patternIndex, u16 renderQueue)
+{
+	if (!(global.xtrachar == 0x01 && (ExtraChar.LevelManager.EnableCustomLevels(0x01))))
+	{
+		base.Renderer.drawVdpSprite(px, py, encodedSize, patternIndex, renderQueue)
+		return
+	}
+
+	if (objA0.update_address == 0x2b962 && objA0.subtype2c == 4 && camera.position.x.u16 > 0x1000)
+	{
+		renderQueue = 0x1001
+		patternIndex = 0x6043
+		base.Renderer.drawVdpSprite(px, py - 0x40, encodedSize, patternIndex, renderQueue)
+		base.Renderer.drawVdpSprite(px, py + 0x40, encodedSize, patternIndex, renderQueue)
+	}
+	if (objA0.update_address == 0x2b962 && objA0.subtype2c == 3 && camera.position.x.u16 > 0x2000)
+	{
+		base.Renderer.drawVdpSprite(px + 0x10, py + 4, encodedSize, patternIndex, renderQueue)
+		base.Renderer.drawVdpSprite(px - 0x10, py - 4, encodedSize, patternIndex, renderQueue)
+		base.Renderer.drawVdpSprite(px + 0x20, py + 8, encodedSize, patternIndex, renderQueue)
+		base.Renderer.drawVdpSprite(px - 0x20, py - 8, encodedSize, patternIndex, renderQueue)
+	}
+    base.Renderer.drawVdpSprite(px, py, encodedSize, patternIndex, renderQueue)
+}
+
+//# address-hook(0x02b928) end(0x02b962)
+function void fn02b928()
+{
+	if (!(global.xtrachar == 0x01 && (ExtraChar.LevelManager.EnableCustomLevels(0x01))))
+	{
+		base.fn02b928()
+		return
+	}
+
+	base.fn02b928()
+	objA0.box_size.x = 0xff
+	objA0.box_size.y = 0xff
+}
+
+function void UpdateLevelDisplay()
+{
+	if (!(global.xtrachar == 0x01 && (ExtraChar.LevelManager.EnableCustomLevels(0x01))))
+	{
+		base.UpdateLevelDisplay()
+		return
+	}
+
+	base.UpdateLevelDisplay()
+	
+	if (prevent_water && camera.position.x.u16 > 0x1440)
+	{
+		level.water_present = 0
+	}
+	
+	if (global.zone_act == 0x0001 && ((camera.position.x.u16 > 0x1040 && camera.position.x.u16 < 0x1140 && camera.position.y.u16 > 0x3b0) || (camera.position.x.u16 > 0x1f00 && camera.position.x.u16 < 0x2000 && camera.position.y.u16 > 0x570) || (camera.position.x.u16 > 0x3500 && camera.position.y.u16 > 0x860) || (camera.position.x.u16 > 0x3200 && camera.position.y.u16 > 0x820)))
+	{
+		if (!(global.zone.xtra & HAS_OBJECTS))
+		{
+			LevelObjectTableBuilder.buildObjects()
+			// ExtraChar.debugLog("MIGHTY: AIZ 2 Alternative objects loaded")
+		}
+		if (!(global.zone.xtra & HAS_LAYOUT))
+		{
+			fn01c362()
+			// ExtraChar.debugLog("MIGHTY: AIZ 2 Alternative lauout loaded")
+		}
+	}
+	
+	A0 = 0xffffb000
+	if (global.zone_act == 0x0901 && !level.wait_for_results && camera.position.x.u16 > 0x100)
+		doLRZCamStuffLol()
+	if (global.zone_act == 0x0001 && !level.wait_for_results)
+		doAIZCamStuffLol()
+}
+
+function void doLRZCamStuffLol()
+{
+	u16[0xfffffc40] = u16[0xffffcf2]
+
+	if (char.position.x.u16 > 0000 && char.position.x.u16 < 0x1b70 && char.position.y.u16 > 0x990)
+		move_area.bottom.target = 0x0ca0
+
+	else if (char.position.x.u16 < 0x1f00 && char.position.y.u16 > 0x990)
+		move_area.bottom.target = 0x0c00
+		
+	else if (char.position.x.u16 <= 0x26f0 && char.position.x.u16 >= 0x23b0 && char.position.y.u16 < 0x9a0)
+	{
+		if (level.framecounter <= 1)
+			move_area.bottom.current = 0x08f0
+		if (move_area.bottom.current >= 0x09a0)
+			move_area.bottom.current = 0x09a0
+		move_area.bottom.target = 0x08f0
+	}
+	else
+	{
+		if (move_area.bottom.target < 0xd20)
+			move_area.bottom.current += 3
+		move_area.bottom.target = 0x0d20
+	}
+}
+
+function void doAIZCamStuffLol()
+{
+	if (char.position.y.u16 > 0x8c0 && char.position.x.u16 > 0x2670 && char.position.x.u16 < 0x2800)
+		move_area.bottom.target = 0xba0
+
+	if (char.position.y.u16 > 0x570 && char.position.x.u16 > 0x2110 && char.position.x.u16 < 0x2200)
+	{
+		move_area.bottom.target = 0xba0
+		water.height.target = 09000
+	}
+}
+
+//# address-hook(0x022ef4) end(0x022f40)
+function void SpringVertical.Update()
+{
+	if (!(global.xtrachar == 0x01 && (ExtraChar.LevelManager.EnableCustomLevels(0x01))))
+	{
+		base.SpringVertical.Update()
+		return
+	}
+
+	// Make this spring slightly less powerful
+	if (global.zone_act == 0x0001 && objA0.position.x == 0x35c00000)
+		u16[A0 + 0x30] = -0x0e00
+
+	// Make this spring slightly less powerful
+	if (global.zone_act == 0x0901 && objA0.position.x == 0x2bc00000)
+		u16[A0 + 0x30] = -0x0f00
+
+	// Make this spring slightly more powerful
+	if (global.zone_act == 0x0901 && objA0.position.x == 0x24500000)
+		u16[A0 + 0x30] = -0x0fff
+
+	base.SpringVertical.Update()
+}
+
+//# address-hook(0x02131c) end(0x021560)
+function void fn02131c()
+{
+	if (!(global.xtrachar == 0x01 && (ExtraChar.LevelManager.EnableCustomLevels(0x01))))
+	{
+		base.fn02131c()
+		return
+	}
+
+	objA0.render_flags = render_flag.WORLD
+	objA0.sprite_priority = 0x0280
+	objA0.update_address = 0x021568
+	if ((objA0.subtype2c & 0x80) && (level.trigger00 != 0))
+	{
+		UnloadObject()
+		return
+	}
+
+	objA0.animation.sprite = objA0.subtype2c & 0x0f
+	objA0.mapping_offset = 0x21fd52
+	objA0.sprite_attributes = (sprite_attribute.PALETTE.LINE2 | 0x0001)
+	objA0.box_size.x = 0x10
+	objA0.box_size.y = 0x28
+	objA0.countdown_callback = 0x02193a
+	u32[A0 + 0x38] = 0x02196a
+
+	if (global.zone == 0x01)
+	{
+		// Hydrocity Zone
+		objA0.mapping_offset = 0x21ffd8
+		objA0.sprite_attributes = (sprite_attribute.PALETTE.LINE3 | 0x0001)
+		objA0.box_size.x = 0x10
+		objA0.box_size.y = 0x20
+		objA0.countdown_callback = 0x02199a
+		u32[A0 + 0x38] = 0x0219ba
+
+		if (objA0.animation.sprite == 0x02)
+		{
+			objA0.sprite_attributes = (sprite_attribute.PALETTE.LINE2 | 0x0350)
+			objA0.box_size.x = 0x18
+			objA0.box_size.y = 0x20
+			objA0.countdown_callback = 0x02199a
+			u32[A0 + 0x38] = 0x0219ba
+			objA0.update_address = 0x021818
+			return
+		}
+	}
+	else if (global.zone == 0x02)
+	{
+		// Marble Garden Zone
+		objA0.mapping_offset = 0x21ff18
+		objA0.sprite_attributes = (sprite_attribute.PALETTE.LINE2 | 0x0001)
+		objA0.box_size.x = 0x20
+		objA0.box_size.y = 0x28
+		objA0.countdown_callback = 0x021a2a
+		u32[A0 + 0x38] = 0x0219da
+
+		if (objA0.subtype2c & 0x10)
+		{
+			objA0.update_address = 0x021818
+			return
+		}
+		if (objA0.animation.sprite == 0x02)
+		{
+			objA0.update_address = 0x02172e
+			return
+		}
+	}
+	else if (global.zone == 0x03)
+	{
+		// Carnival Night Zone
+		objA0.mapping_offset = 0x021aba
+		objA0.sprite_attributes = (sprite_attribute.PALETTE.LINE2 | 0x0420)
+		objA0.box_size.x = 0x10
+		objA0.box_size.y = 0x20
+		objA0.countdown_callback = 0x021a7a
+		u32[A0 + 0x38] = 0x021a9a
+
+		if (objA0.animation.sprite == 0x02)
+		{
+			objA0.update_address = 0x021818
+			return
+		}
+	}
+	else if (global.zone == 0x06)
+	{
+		// Launch Base Zone
+		objA0.mapping_offset = 0x22005e
+		objA0.sprite_attributes = (sprite_attribute.PALETTE.LINE1 | 0x02ea)
+		objA0.box_size.x = 0x10
+		objA0.box_size.y = 0x20
+		objA0.countdown_callback = 0x02199a
+		u32[A0 + 0x38] = 0x0219ba
+
+		objA0.update_address = 0x021818
+		return
+	}
+	else if (global.zone == 0x07)
+	{
+		// Mushroom Hill Zone
+		objA0.mapping_offset = 0x021bce
+		objA0.sprite_attributes = (sprite_attribute.PALETTE.LINE2 | 0x034b)
+		objA0.box_size.x = 0x10
+		objA0.box_size.y = 0x20
+		objA0.countdown_callback = 0x021a7a
+		u32[A0 + 0x38] = 0x021a9a
+
+		objA0.update_address = 0x021818
+		return
+	}
+	else if (global.zone == 0x08)
+	{
+		// Sandopolis Zone
+		objA0.mapping_offset = 0x021aba
+		objA0.sprite_attributes = (sprite_attribute.PALETTE.LINE2 | 0x048c)
+		objA0.box_size.x = 0x10
+		objA0.box_size.y = 0x20
+		objA0.countdown_callback = 0x021a7a
+		u32[A0 + 0x38] = 0x021a9a
+
+		objA0.update_address = 0x021818
+		if (objA0.animation.sprite == 0x04)
+		{
+			objA0.box_size.y = 0x30
+			objA0.countdown_callback = 0x02193a
+			u32[A0 + 0x38] = 0x02196a
+		}
+		return
+	}
+	else if (global.zone == 0x09)
+	{
+		// Lava Reef Zone
+		objA0.mapping_offset = 0x021c1e
+		objA0.sprite_attributes = (sprite_attribute.PALETTE.LINE3 | 0x040d)
+		objA0.box_size.x = 0x10
+		objA0.box_size.y = 0x20
+		objA0.countdown_callback = 0x021a7a
+		u32[A0 + 0x38] = 0x021a9a
+		
+		if (objA0.subtype2c == 0x01)
+		{
+			objA0.animation.sprite = 0
+			objA0.animation.sprite = 0
+			objA0.update_address = 0x021818
+			return
+		}
+	}
+
+	fn021568()
+}
+
+// Cork floor that can only be broken by Mighty.
+//# address-hook(0x02a502) end(0x02a586)
+function void fn02a502()
+{
+	if (!(global.xtrachar == 0x01 && (ExtraChar.LevelManager.EnableCustomLevels(0x01))))
+	{
+		base.fn02a502()
+		return
+	}
+
+	bool MightyWasDroppingDown = (u8[0xffffb000 + 0x0d] & 0x02)
+
+	u16[A0 + 0x38] = score.bonus_counter
+	u8[A0 + 0x34] = u8[0xffffb020]
+	u8[A0 + 0x36] = u8[0xffffb06a]
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y
+	D3.u16 = D2.u16 + 1
+	D4.u16 = objA0.position.x.u16
+	fn01dc56()
+	
+	D0.u16 = objA0.flags2a & 0x18
+	if (D0.u16 == 0)
+	{
+		DrawOrUnloadObject()
+		return
+	}
+
+	if (D0.u8 == 0x18)
+	{
+		if (u8[A0 + 0x34] != 2 && u8[A0 + 0x36] != 2)
+		{
+			DrawOrUnloadObject()
+			return
+		}
+
+		A1 = 0xffffb000
+		D0.u8 = u8[A0 + 0x34]
+		fn02a588()
+
+		A1 = 0xffffb04a
+		D0.u8 = u8[A0 + 0x36]
+		fn02a588()
+
+		fn02a5d8()
+	}
+	else
+	{
+		D1.u8 = D0.u8 & 0x08
+		if (D1.u8 == 0)
+		{
+			fn02a5c0()
+			return
+		}
+
+		if (u8[A0 + 0x34] != 2 || (objA0.flags2a & 0x01 && !(MightyWasDroppingDown || GfxMightySmashing)))
+		{
+			DrawOrUnloadObject()
+			return
+		}
+
+		A1 = 0xffffb000
+		fn02a58e()
+		fn02a5d8()
+	}
+}
+
+//# address-hook(0x01faf2) end(0x01fb4a)
+function void Rocks.Update()
+{
+	if (!(global.xtrachar == 0x01 && (ExtraChar.LevelManager.EnableCustomLevels(0x01))))
+	{
+		base.Rocks.Update()
+		return
+	}
+
+	objA0.sprite_priority = 0x180
+
+	u16[A0 + 0x38] = score.bonus_counter
+	u8[A0 + 0x32] = u8[0xffffb000 + 0x20]
+	u8[A0 + 0x33] = u8[0xffffb04a + 0x20]
+	objA0.value3a = u8[0xffffb000 + 0x2a]
+	objA0.value3b = u8[0xffffb04a + 0x2a]
+
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y
+	D3.u16 = D2.u16 + 1
+	D4.u16 = objA0.position.x.u16
+	fn01dc56()
+
+	if (objA0.subtype2c & 0x02)
+	{
+		fn0200a2()
+	}
+
+	if (objA0.subtype2c & 0x01)
+	{
+		D0.u8 = objA0.flags2a & (object.flag.P1_ON_OBJECT | object.flag.P2_ON_OBJECT)
+		if (D0.u8 != 0)
+		{
+			if (D0.u8 == (object.flag.P1_ON_OBJECT | object.flag.P2_ON_OBJECT))
+			{
+				if (u8[A0 + 0x32] == 2 || u8[A0 + 0x33] == 2)
+				{
+					A1 = 0xffffb000
+					D0.u8 = u8[A0 + 0x32]
+					fn01fba8()
+
+					A1 = 0xffffb04a
+					D0.u8 = u8[A0 + 0x33]
+					fn01fba8()
+
+					fn01fbf8()
+					return
+				}
+			}
+			else
+			{
+				if (!(char.flags & 1 && !GfxMightySmashing))
+				{
+					D1.u8 = D0.u8 & object.flag.P1_ON_OBJECT
+					if (D1.u8 == 0)
+					{
+						fn01fbe0()
+						return
+					}
+
+					if (u8[A0 + 0x32] == 2)
+					{
+						A1 = 0xffffb000
+						fn01fbae()
+						fn01fbf8()
+						return
+					}
+				}
+			}
+		}
+	}
+
+	fn01fb4c()
+}
+
+// fix for janky monitor code
+//# address-hook(0x01d696) end(0x01d6be)
+function void MonitorIntact.CheckBlocking()
+{
+	if (!(global.xtrachar == 0x01 && (ExtraChar.LevelManager.EnableCustomLevels(0x01))))
+	{
+		base.MonitorIntact.CheckBlocking()
+		return
+	}
+
+	u8 bit = (1 << D6.u8)
+	if (objA0.flags2a & bit)
+	{
+		fn01d6dc()
+	}
+	else
+	{
+		// Note that "Character.OnCollisionWithDynamicObject" does the same checks again
+
+		bool canOpenMonitor = false
+		if (objA1.state == char.state.ROLLING)
+		{
+			canOpenMonitor = true
+		}
+	#if STANDALONE
+		else if (Game.getSetting(SETTING_DROPDASH) && u8[A1 + 0x38] == CHARACTER_SONIC && objA1.state == char.state.SONIC_DROPDASH)
+		{
+			canOpenMonitor = true
+		}
+		else if (objA1.state == char.state.SPINDASH)
+		{
+			canOpenMonitor = true
+		}
+		else if (objA0.velocity.y > 0)
+		{
+			canOpenMonitor = true
+		}
+	#endif
+		else if (u8[A1 + 0x38] == CHARACTER_KNUCKLES)
+		{
+			// Check if Knuckles glides into the monitor
+			canOpenMonitor = (u8[A1 + 0x2f] == 1 || u8[A1 + 0x2f] == 3)
+		}
+
+		if (!canOpenMonitor)
+		{
+			// Block character movement
+			fn01df90()
+		}
+	}
+}

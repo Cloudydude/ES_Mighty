@@ -1,0 +1,35 @@
+{
+	"sonic_in_tornado":  { "File": "Tornado_Head_Sonic.bmp", "Rect": "0,0,32,16", "Center": "20,8" },
+
+	"monitor_mighty_shoe":  { "File": "Mighty_monitor_life_icons.bmp", "Rect": "0,71,16,16", "Center": "8,8" },
+	"monitor_megamix_mighty_shoe":  { "File": "Mighty_monitor_life_icons.bmp", "Rect": "16,71,16,16", "Center": "8,8" },
+	"monitor_chaotix_mighty_shoe":  { "File": "Mighty_monitor_life_icons.bmp", "Rect": "32,71,16,16", "Center": "8,8" },
+
+	"monitor_mania_mighty_shoe":  { "File": "Custom_huds.png", "Rect": "176,16,16,16", "Center": "8,8" },
+	"dataSel_character_mighty":  { "File": "dataSel_character_mighty.png", "Rect": "0,0,57,54", "Center": "15,20" },
+	"dataSel_lifeContinue_mighty":  { "File": "Custom_huds.png", "Rect": "224,144,25,40", "Center": "5,16" },
+	"dataSel_life_mighty":  { "File": "Custom_huds.png", "Rect": "224,144,25,16", "Center": "5,16" },
+	"Super_text":  { "File": "MightyAllBMP.bmp", "Rect": "0,72,74,16", "Center": "0,0" },
+	"Hyper_text":  { "File": "MightyAllBMP.bmp", "Rect": "0,88,74,16", "Center": "0,0" },
+
+	"Result_NamePlate_Mighty":  { "File": "Custom_huds.png", "Rect": "0,176,151,20", "Center": "31,0" },
+	"Result_NamePlate_Mighty_Levels":  { "File": "Custom_huds.png", "Rect": "0,176,108,20", "Center": "51,0" },
+	"I_was_frozen_today_0":  { "File": "Ow My Face.bmp", "Rect": "4,2,38,44", "Center": "18,21" },
+	"I_was_frozen_today_1":  { "File": "Ow My Face.bmp", "Rect": "47,2,38,44", "Center": "18,21" },
+	"I_was_also_frozen_today_0":  { "File": "Frostbite.bmp", "Rect": "16,10,30,43", "Center": "14,20" },
+	"I_was_also_frozen_today_1":  { "File": "Frostbite.bmp", "Rect": "80,10,30,43", "Center": "14,20" },
+	"migty":  { "File": "migty.png", "Rect": "0,0,241,202", "Center": "34,-12" },
+	
+	"hud_text_underline_score_Mighty":  { "File": "hud_text_underline_Mighty.png", "Rect": "0,0,54,12", "Center": "0,0" },
+	"hud_text_underline_time_Mighty":  { "File": "hud_text_underline_Mighty.png", "Rect": "0,13,43,12", "Center": "0,0" },
+	"hud_text_underline_ring_Mighty":  { "File": "hud_text_underline_Mighty.png", "Rect": "0,26,51,12", "Center": "0,0" },
+	"hud_text_underline_bonus_Mighty":  { "File": "hud_text_underline_Mighty.png", "Rect": "0,39,87,12", "Center": "0,0" },
+
+	"hud_underline_results_0_Mighty":  { "File": "act_clear_underline_Mighty.png", "Rect": "0,0,28,8", "Center": "28,0" },
+	"hud_underline_results_1_Mighty":  { "File": "act_clear_underline_Mighty.png", "Rect": "29,0,1,8", "Center": "0,0" },
+	"hud_underline_results_2_Mighty":  { "File": "act_clear_underline_Mighty.png", "Rect": "31,0,28,8", "Center": "-1,0" },
+	"S3_Mighty_head_big":  { "File": "MightyAllBMP.bmp", "Rect": "198,35,32,16", "Center": "20,8" },
+	"Mania_Mighty_head_big":  { "File": "MightyAllBMP.bmp", "Rect": "199,52,32,16", "Center": "20,8" },
+	"S3_Mighty_head_small":  { "File": "MightyAllBMP.bmp", "Rect": "232,42,16,9", "Center": "8,5" },
+	"Mania_Mighty_head_small":  { "File": "MightyAllBMP.bmp", "Rect": "233,59,16,9", "Center": "8,5" }
+}

@@ -1,0 +1,14 @@
+{
+	"Goal_animes_slot1_0":  { "File": "Mighty_signanims.bmp", "Rect": "0,0,48,32", "Center": "24,16" },
+	"Goal_animes_slot1_1":  { "File": "Mighty_signanims.bmp", "Rect": "0,32,48,32", "Center": "24,16" },
+	"Goal_animes_slot1_2":  { "File": "Mighty_signanims.bmp", "Rect": "0,64,48,32", "Center": "24,16" },
+	"Goal_animes_slot1_3":  { "File": "Mighty_signanims.bmp", "Rect": "0,96,48,32", "Center": "24,16" },
+
+	"Goal_animes_slot1_S3_0":  { "File": "Mighty_signanims.bmp", "Rect": "48,0,48,32", "Center": "24,16" },
+	"Goal_animes_slot1_S3_1":  { "File": "Mighty_signanims.bmp", "Rect": "48,32,48,32", "Center": "24,16" },
+	"Goal_animes_slot1_S3_2":  { "File": "Mighty_signanims.bmp", "Rect": "48,64,48,32", "Center": "24,16" },
+	"Goal_animes_slot1_S3_3":  { "File": "Mighty_signanims.bmp", "Rect": "48,96,48,32", "Center": "24,16" },
+
+	"Mania_Signpost_slot1_S3":  { "File": "goalplates_mighty.bmp", "Rect": "463,1,48,31", "Center": "24,15" },
+	"Mania_Signpost_slot1":  { "File": "goalplates_mighty.bmp", "Rect": "49,2,48,30", "Center": "24,15" }
+}

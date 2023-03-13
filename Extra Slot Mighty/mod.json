@@ -1,0 +1,460 @@
+{
+	"Metadata":
+	{
+		"Name": "Extra Slot Mighty",
+		"Author": "iCloudius",
+		"Description": "Mighty the Armadillo now appears as an extra playable character for Sonic 3 A.I.R without overriding Sonic's slot",
+		"ModVersion": "v5.0",
+		"GameVersion": "v22.05.15.0"
+	},
+	"Settings":
+	{
+		"Group1":
+		[
+			{
+				"InternalName": "Mighty Partners",
+				"DisplayName": "Partner",
+				"Variable": "Mighty_Partner",
+				"DefaultValue": "0",	
+				"Category": "Gameplay",			
+				"Options":
+				{
+					"0": "No",
+					"1": "Yes"
+				}
+			},
+			{
+				"InternalName": "MightyWallJumpStyle",
+				"DisplayName": "Mighty's Wall Jump",
+				"Variable": "MightyWallJump",
+				"DefaultValue": "0",	
+				"Category": "Gameplay",			
+				"Options":
+				{
+					"0": "Chaotix",
+					"1": "Megamix Mania"
+				}
+			},
+			{
+				"InternalName": "Surfboard Intro",
+				"DisplayName": "Intro Style",
+				"Variable": "Mighty_Intro_Type",
+				"DefaultValue": "0",	
+				"Category": "Gameplay",			
+				"Options":
+				{
+					"0": "Surfboard",
+					"1": "Plane"
+				}
+			},
+			{
+				"InternalName": "EnableCustomLevels",
+				"DisplayName": "AIZ/LRZ Mighty Paths",
+				"Variable": "Mighty.Levels",
+				"DefaultValue": "0",	
+				"Category": "Gameplay",			
+				"Options":
+				{
+					"0": "Off",
+					"1": "On"
+				}
+			},
+			{
+				"InternalName": "KnucklesPathAIZ",
+				"DisplayName": "Starting Path AIZ2",
+				"Variable": "MightyAIZ2",
+				"DefaultValue": "0",	
+				"Category": "Gameplay",			
+				"Options":
+				{
+					"0": "Sonic",
+					"1": "Knuckles"
+				}
+			},
+			{
+				"InternalName": "KnucklesPathICZ",
+				"DisplayName": "Starting Path ICZ2",
+				"Variable": "MightyICZ2",
+				"DefaultValue": "0",	
+				"Category": "Gameplay",			
+				"Options":
+				{
+					"0": "Sonic",
+					"1": "Knuckles"
+				}
+			},
+			{
+				"InternalName": "KnucklesStoryBlocks",
+				"DisplayName": "Break Knuckles Story Blocks",
+				"Variable": "StoryBlocks",
+				"DefaultValue": "0",	
+				"Category": "Gameplay",			
+				"Options":
+				{
+					"0": "Off",
+					"1": "On"
+				}
+			},
+			{
+				"InternalName": "MightyPath",
+				"DisplayName": "Enter Doomsday Zone",
+				"Variable": "MightyDDZ",
+				"DefaultValue": "0",	
+				"Category": "Gameplay",			
+				"Options":
+				{
+					"0": "Yes",
+					"1": "No"
+				}
+			},
+			{
+				"InternalName": "Spike bounce",
+				"DisplayName": "Spike Bounce",
+				"Variable": "Mighty_Spike_Bounce",
+				"DefaultValue": "0",	
+				"Category": "Gameplay",			
+				"Options":
+				{
+					"0": "Mania",
+					"1": "pre-4.0"
+				}
+			},
+			{
+				"InternalName": "Elemental Shields",
+				"DisplayName": "Elemental Shields",
+				"Variable": "Mighty_ElemenShi",
+				"DefaultValue": "0",	
+				"Category": "Gameplay",			
+				"Options":
+				{
+					"0": "Off",
+					"1": "On"
+				}
+			},
+			{
+				"InternalName": "Custom Mappings",
+				"DisplayName": "Custom Mappings",
+				"Variable": "Mighty_Custom_Mappings",
+				"DefaultValue": "1",	
+				"Category": "Controls",			
+				"Options":
+				{
+					"0": "On",
+					"1": "Off"
+				}
+			},
+			{
+				"InternalName": "Hammer Drop Inputs",
+				"DisplayName": "Hammer Drop Button(s)",
+				"Variable": "Hammerdrop_Button",
+				"DefaultValue": "0x70",	
+				"Category": "Controls",			
+				"Options":
+				{
+					"0x00": "None",
+					"0x10": "B",
+					"0x20": "C",
+					"0x30": "B or C",
+					"0x40": "A",
+					"0x50": "A or B",
+					"0x60": "A or C",
+					"0x70": "A or B or C"
+				}
+			},
+			{
+				"InternalName": "Wall Jump Inputs",
+				"DisplayName": "Wall Jump Button(s)",
+				"Variable": "Wall_Jump_Button",
+				"DefaultValue": "0x70",	
+				"Category": "Controls",			
+				"Options":
+				{
+					"0x00": "None",
+					"0x10": "B",
+					"0x20": "C",
+					"0x30": "B or C",
+					"0x40": "A",
+					"0x50": "A or B",
+					"0x60": "A or C",
+					"0x70": "A or B or C"
+				}
+			},
+			{
+				"InternalName": "Elemental Shield Inputs",
+				"DisplayName": "Shield Button(s)",
+				"Variable": "Shield_Button",
+				"DefaultValue": "0x20",	
+				"Category": "Controls",			
+				"Options":
+				{
+					"0x00": "None",
+					"0x10": "B",
+					"0x20": "C",
+					"0x30": "B or C",
+					"0x40": "A",
+					"0x50": "A or B",
+					"0x60": "A or C",
+					"0x70": "A or B or C"
+				}
+			},
+			{
+				"InternalName": "MightySprites",
+				"DisplayName": "Mighty's Sprites",
+				"Variable": "Mighty_Sprite_type",
+				"DefaultValue": "1",
+				"Category": "Appearance",				
+				"Options":
+				{
+					"0": "Mania",
+					"1": "Sonic 3"
+				}
+			},
+			{
+				"InternalName": "MightyPalette",
+				"DisplayName": "Mighty's Palette",
+				"Variable": "MightyPalette",
+				"DefaultValue": "4",
+				"Category": "Appearance",				
+				"Options":
+				{
+					"0": "Ultimate",
+					"1": "SegaSonic",
+					"2": "Chaotix",
+					"3": "Mania",
+					"4": "Sonic 3",
+					"5": "Blood Orange",
+					"6": "Wild Berry",
+					"7": "Lambert Cherry",
+					"8": "Undertale: Bits & Pieces",
+				}
+			},
+			{
+				"InternalName": "Grays",
+				"DisplayName": "Grays",
+				"Variable": "Mighty_Grays",
+				"DefaultValue": "0",
+				"Category": "Appearance",				
+				"Options":
+				{
+					"0": "Unique",
+					"1": "Consistent"
+				}
+			},
+			{
+				"InternalName": "SmoothRotation",
+				"DisplayName": "Smooth Sprite Rotation",
+				"Variable": "Mighty_Smooth_type",
+				"DefaultValue": "1",
+				"Category": "Appearance",				
+				"Options":
+				{
+					"0": "On",
+					"1": "Off"
+				}
+			},
+			{
+				"InternalName": "Super Palettes",
+				"DisplayName": "Super/Hyper Glow",
+				"Variable": "Glow",
+				"DefaultValue": "0",
+				"Category": "Super Palette",				
+				"Options":
+				{
+					"0": "Cycle",
+					"1": "Flash White"
+				}
+			},
+			{
+				"InternalName": "White Flash",
+				"DisplayName": "Super/Hyper White Flash",
+				"Variable": "Flash",
+				"DefaultValue": "0",
+				"Category": "Super Palette",				
+				"Options":
+				{
+					"0": "Pure White",
+					"1": "Mostly White"
+				}
+			},
+			{
+				"InternalName": "Underwater super/hyper palletes",
+				"DisplayName": "Underwater Palletes",
+				"Variable": "UnderDaSea",
+				"DefaultValue": "1",
+				"Category": "Super Palette",				
+				"Options":
+				{
+					"0": "Off",
+					"1": "On"
+				}
+			},
+			{
+				"InternalName": "Expanded Hyper palette",
+				"DisplayName": "Use Hyper Sonic's Palette",
+				"Variable": "EXPAL",
+				"DefaultValue": "0",
+				"Category": "Super Palette",				
+				"Options":
+				{
+					"0": "Off",
+					"1": "On"
+				}
+			},
+			{
+				"InternalName": "Spring Fall",
+				"DisplayName": "Bouncing off a Spring",
+				"Variable": "Mighty_Twirl_Fall",
+				"DefaultValue": "0",
+				"Category": "Falling animation",		
+				"Options":
+				{
+					"0": "Off",
+					"1": "On"
+				}
+			},
+			{
+				"InternalName": "Transform Fall",
+				"DisplayName": "After Transforming",
+				"Variable": "Mighty_Transform_Fall",
+				"DefaultValue": "1",	
+				"Category": "Falling animation",	
+				"Options":
+				{
+					"0": "Off",
+					"1": "On"
+				}
+			},
+			{
+				"InternalName": "From AIZ to that one zone",
+				"DisplayName": "Level Transitions",
+				"Variable": "Mighty_Level_Transition_Fall",
+				"DefaultValue": "0",
+				"Category": "Falling animation",		
+				"Options":
+				{
+					"0": "Off",
+					"1": "On"
+				}
+			},
+			{
+				"InternalName": "Uncurl",
+				"DisplayName": "While Uncurled",
+				"Variable": "Mighty_Uncurled_Fall",
+				"DefaultValue": "0",
+				"Category": "Falling animation",		
+				"Options":
+				{
+					"0": "Off",
+					"1": "On"
+				}
+			},
+			{
+				"InternalName": "'Mighty in' Text",
+				"DisplayName": "Enable Custom Banner",
+				"Variable": "Mighty_Banner_Text",
+				"DefaultValue": "0",
+				"Category": "Zone Banner",				
+				"Options":
+				{
+					"0": "Yes",
+					"1": "No"
+				}
+			},
+			{
+				"InternalName": "Banner Text",
+				"DisplayName": "Banner Text",
+				"Variable": "Banner_Text",
+				"DefaultValue": "1",
+				"Category": "Zone Banner",				
+				"Options":
+				{
+					"0": "DA Garden",
+					"1": "Sonic 3 A.I.R",
+					"2": "Sonic 3",
+					"3": "Sonic & Knuckles",
+					"4": "Sonic 3 & Knuckles"
+				}
+			},
+			{
+				"InternalName": "Banner Display",
+				"DisplayName": "Show Banner in DDZ",
+				"Variable": "Display_Banner",
+				"DefaultValue": "0",
+				"Category": "Zone Banner",
+				"Options":
+				{
+					"0": "Yes",
+					"1": "No"
+				}
+			},
+			{
+				"InternalName": "Zone Banner",
+				"DisplayName": "DA Garden Zone Banner",
+				"Variable": "Zone_Banner",
+				"DefaultValue": "0",
+				"Category": "Zone Banner",		
+				"Options":
+				{
+					"0": "Default",
+					"1": "DA Garden"
+				}
+			},
+			{
+				"InternalName": "Bounce Height",
+				"DisplayName": "Hammer Drop Bounce",
+				"Variable": "HD_Bounce",
+				"DefaultValue": "0",
+				"Category": "Misc.",				
+				"Options":
+				{
+					"0": "Default",
+					"1": "Off",
+					"2": "Low",
+					"3": "Medium",
+					"4": "High",
+					"5": "Preserve Momentum",
+					"6": "Based on held button"
+				}
+			},
+			{
+				"InternalName": "Screen Shake",
+				"DisplayName": "Hammer Drop Screen Shake",
+				"Variable": "HD_Shake",
+				"DefaultValue": "0",
+				"Category": "Misc.",				
+				"Options":
+				{
+					"0": "On",
+					"1": "Off (Normal Mighty)",
+					"2": "Off (Super/Hyper Mighty)",
+					"3": "Off"
+				}
+			},
+			{
+				"InternalName": "Tornado Pilot",
+				"DisplayName": "Plane Pilot",
+				"Variable": "Mighty_Pilot",
+				"DefaultValue": "0",
+				"Category": "Misc.",				
+				"Options":
+				{
+					"0": "Sonic",
+					"1": "Tails",
+					"2": "Ray (ESR required)"
+				}
+			},
+			{
+				"InternalName": "Unique speed shoes",
+				"DisplayName": "Speed Shoes Icon",
+				"Variable": "Mighty_Speed_Shoes",
+				"DefaultValue": "0",
+				"Category": "Misc.",				
+				"Options":
+				{
+					"0": "Unique",
+					"1": "Default"
+				}
+			}
+		]
+	}
+}

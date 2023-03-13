@@ -1,0 +1,17 @@
+{
+	"mania_mighty_springtwirl_0":  { "File": "Mania_Spring_Twirl.bmp", "Rect": "2,0,32,48", "Center": "16,20" },
+	"mania_mighty_springtwirl_1":  { "File": "Mania_Spring_Twirl.bmp", "Rect": "53,0,28,48", "Center": "14,20" },
+	"mania_mighty_springtwirl_2":  { "File": "Mania_Spring_Twirl.bmp", "Rect": "105,0,23,48", "Center": "11,20" },
+	"mania_mighty_springtwirl_3":  { "File": "Mania_Spring_Twirl.bmp", "Rect": "153,0,26,47", "Center": "12,20" },
+	"mania_mighty_springtwirl_4":  { "File": "Mania_Spring_Twirl.bmp", "Rect": "201,0,26,47", "Center": "13,20" },
+	"mania_mighty_springtwirl_5":  { "File": "Mania_Spring_Twirl.bmp", "Rect": "247,0,32,47", "Center": "16,20" },
+	"mania_mighty_springtwirl_6":  { "File": "Mania_Spring_Twirl.bmp", "Rect": "299,0,26,47", "Center": "13,20" },
+	"mania_mighty_springtwirl_7":  { "File": "Mania_Spring_Twirl.bmp", "Rect": "347,0,26,47", "Center": "14,20" },
+	"mania_mighty_springtwirl_8":  { "File": "Mania_Spring_Twirl.bmp", "Rect": "398,0,23,48", "Center": "12,20" },
+	"mania_mighty_springtwirl_9":  { "File": "Mania_Spring_Twirl.bmp", "Rect": "445,0,28,48", "Center": "14,20" },
+	"s3mighty_springtwirl_0":  { "File": "S3_character_mighty.bmp", "Rect": "292,60,32,48", "Center": "14,24" },
+	"s3mighty_springtwirl_1":  { "File": "S3_character_mighty.bmp", "Rect": "348,60,32,48", "Center": "12,24" },
+	"s3mighty_springtwirl_2":  { "File": "S3_character_mighty.bmp", "Rect": "404,60,32,48", "Center": "16,24" },
+	"s3mighty_springtwirl_3":  { "File": "S3_character_mighty.bmp", "Rect": "460,60,32,48", "Center": "14,24" },
+	"s3mighty_springtwirl_4":  { "File": "S3_character_mighty.bmp", "Rect": "516,60,32,48", "Center": "14,24" }
+}

@@ -1,0 +1,6 @@
+{
+	"dust_0":  { "File": "dust_0.bmp", "Rect": "0,0,16,16", "Center": "8,8" },
+	"dust_1":  { "File": "dust_0.bmp", "Rect": "16,0,16,16", "Center": "8,8" },
+	"dust_2":  { "File": "dust_0.bmp", "Rect": "32,0,16,16", "Center": "8,8" },
+	"dust_3":  { "File": "dust_0.bmp", "Rect": "48,0,16,16", "Center": "8,8" }
+}

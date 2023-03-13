@@ -1,0 +1,10 @@
+{
+	"aiz2_char1_layout":	{ "File": "AIZ/Layout/2.bin" },
+	"aiz2_char1_objects":	{ "File": "AIZ/Object pos/2.bin" },
+	"aiz_mighty_test":		{ "File": "AIZ/Palettes/Main.bin" },
+	
+	"lrz2_char1_layout":	{ "File": "LRZ/Layout/2.bin" },
+	"lrz2_char1_objects":	{ "File": "LRZ/Object pos/2.bin" },
+	"lrz2_char1_rings":		{ "File": "LRZ/Ring pos/2.bin" },
+	"lrz2_mighty_chunks":	{ "File": "LRZ/Chunks/Act 2 Secondary.kos" }
+}

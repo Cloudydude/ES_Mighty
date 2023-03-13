@@ -1,0 +1,3390 @@
+global u8 Shield_Button
+global u8 Hammerdrop_Button
+global u8 Wall_Jump_Button
+global bool Mighty_Custom_Mappings
+global bool MightyWallJump
+//global u8 Hori_Momen
+
+//mighty doesn't peelout. Other charachers should be able to though!
+function bool Character.updateSuperPeelout()
+{
+	//V1.11 Other characters (EG: Extra Life) should be able to peelout!
+	if (global.xtrachar == 1 && char.character == CHARACTER_SONIC)
+		return false
+
+	return base.Character.updateSuperPeelout()
+}
+
+
+function void Character.Initialization.shared(u8 character)
+{
+	if (global.xtrachar == 1 && character == CHARACTER_SONIC)
+	{
+		if (Mighty_Uncurled_Fall == 1 && global.zone_act == 0x0600) // Fix for LBZ
+			Should_fall_anim = false
+		FreeFall = 0
+		SuperFall = false
+		Force_Fall = false
+		Mighty_ShowFall = false
+		MightyDustControl = 0
+	}
+	if (global.game_mode == 0x8c)
+		zeroMemory(0x802240, 0x120)
+	Move_Mighty = false
+	base.Character.Initialization.shared(character)
+}
+
+//# address-hook(0x012600) end(0x01286c)
+//# translated(0x012a2a) end(0x012a6e)
+function void UpdateSonicAnimation()
+{
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.UpdateSonicAnimation()
+		return
+	}
+	else
+	{
+		if (char.state != char.state.former)
+		{
+			char.state.former = char.state
+			char.animation.frame = 0
+			char.animation.timer = 0
+			char.flags &= ~char.flag.PUSHING
+		}
+
+		if (char.state == char.state.STANDING && abs(char.groundspeed) > 0x70 && global.zone != 0x17)
+			char.state = char.state.RUNNING
+
+		// A1 = (super.active) ? 0x012c3a : 0x1FF9B0
+		A1 = 0x1FF9B0
+		A1 = tableLookupAddress(A1, char.state * 2)
+
+		if (char.state == char.state.STANDING && Mighty_Sprite_type)
+			A1 = 0x1FFBF0	// address of S3 Mighty's idle animation
+
+		D0.u8 = u8[A1]
+
+		// D0.u8 is either:
+		//  - 0xff when running
+		//  - 0xfe when rolling (on ground or in air)
+		//  - between 0x00 and 0x7f in other cases (like standing, balancing, spring-jumping, getting hurt, etc.)
+
+		if (D0.u8 < 0x80)
+		{
+			updateSonicAnimationStanding()
+		}
+		else if (D0.u8 == 0xff)
+		{
+			updateSonicAnimationRunning()
+		}
+		else
+		{
+			updateSonicAnimationRolling()
+		}
+	}
+}
+global bool ShouldUncurl
+
+//# address-hook(0x010f2c) end(0x010f82)
+function void Character.UpdateSonicUprightOnGround()
+{
+	if (global.xtrachar == 1 && A0 == 0xffffb000)
+	{
+		hammercontrol = false
+		FallingFix = false
+		ShouldUncurl = false
+		Fall_Anim_Corkscrew = 0
+		FreeFall = 0
+		Should_fall_anim = false
+		SuperFall = false
+		Bounce_off = false
+		MightyWasRolling = false
+		MightyBounced = false
+		Mighty.updateUprightOnGround()
+		return
+	}
+	base.Character.UpdateSonicUprightOnGround()
+}
+
+function void Mighty.updateUprightOnGround()
+{
+	if (Character.UpdateSpindash())
+		return
+
+	if (Character.CheckStartJump())
+		return
+
+	Character.UpdateUprightSlopeEffect()
+	Character.updateUprightOnGroundInner()
+	Character.CheckForStartRolling()
+
+	Character.sharedUpdateOnGround()
+}
+
+global bool Mighty_ElemenShi
+
+function void ForceDetatchfromWall()
+{
+	if ((char.flags & char.flag.ON_OBJECT) == 0) // Mainly for the SOZ quicksand
+		char.state = char.state.ROLLING
+	char.flags &= ~char.flag.CONTROL_LOCK
+	MightyFrameCounter = 0
+	MightyWallCollision = 0
+	MightyCollisionTimer = 0
+	u8[A0 + 0x0d] &= ~0x40
+}
+
+// Fixes bug when un-transforming on wall
+function void Character.cancelSuperTransformation()
+{
+	if (global.xtrachar == 1 && u8[A0 + 0x0d] & 0x40)
+	{
+		ForceDetatchfromWall()
+	}
+	base.Character.cancelSuperTransformation()
+}
+
+//mighty doesn't dropdash.
+function void Character.updateJumpMoves()
+{
+	//this has to trigger for mighty only
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.Character.updateJumpMoves()
+		return
+	}
+	u8 input_state     = (char.character == CHARACTER_TAILS) ? control.tails.state   : control.player1.state
+	u8 input_pressed   = (char.character == CHARACTER_TAILS) ? control.tails.pressed : control.player1.pressed
+	bool isSuperActive = (char.character == CHARACTER_TAILS) ? super.active.tails    : super.active
+
+	if (char.jumping)
+	{
+		//v 1.11 make sure Mighty is rolling
+		MightyWasRolling = true
+		//reduce Wall Collision Timer
+		if (MightyCollisionTimer > 0)
+		{
+			MightyCollisionTimer = MightyCollisionTimer -1
+		}
+		// Limit velocity.y
+		s16 max_vy = (char.flags & char.flag.UNDERWATER) ? -0x200 : -0x400
+		if (char.velocity.y < max_vy && !(u8[A0 + 0x2a] & 0x80)) //it must not happen if we released a wall jump! They are always max power
+		{
+			// Limit vertical velocity while not pressing any jump button
+			//  -> This is important to support low jumps by just tapping the button briefly
+			if ((input_state & CONTROL_ABC) == 0)
+			{
+				char.velocity.y = max_vy
+			}
+		}
+		else
+		{
+			if (char.double_jump_state == 0)
+			{
+				#if STANDALONE
+					if (Input.buttonPressed(BUTTON_Y) && !System.getGlobalVariableValueByName("original_mode"))
+					{
+						if (Mods.isModActive("Characters Go Super Then Hyper"))
+						{
+							if ((isSuperActive == 0xff) == 0 && char.invuln.countdown == 0)	// Check invulnerability to prevent spamming of super activate + cancel
+							{
+								if (global.chaos_emeralds >= 7 && global.traded_emeralds == 0 && super.active)
+								{
+									char.jumping = 0
+									return
+								}
+								else if (Character.performSuperTransformation())
+								{
+									char.jumping = 0
+									return
+								}
+							}
+						}
+						//	base.Character.updateJumpMoves()
+						else if (!isSuperActive && char.invuln.countdown == 0)	// Check invulnerability to prevent spamming of super activate + cancel
+						{
+							if (Character.performSuperTransformation())
+								return
+						}
+					}
+				#endif
+
+				// Check if pressed jump again in mid-air
+				if (input_pressed & CONTROL_ABC)
+				{
+					u64 key = stringformat("obj_dark_sand_pit_overlay_shallow184", 0)
+					if (Renderer.hasCustomSprite(key) && Character.performSuperTransformation() && System.getGlobalVariableValueByName("original_mode"))
+						return
+				#if STANDALONE
+					// Check for other things to do instead of the usual reaction to jump button pressed
+					if (onCharacterPressedJumpInMidAir(input_state, input_pressed))
+				#endif
+					{
+						if ((global.xtrachar == 1 && char.character == CHARACTER_SONIC) || competition.xtrachar == 0x01)
+						{
+							// Remove control lock
+							char.flags &= ~char.flag.CONTROL_LOCK
+
+							char.double_jump_state = 1
+
+
+							//In Mania Mighty stomps down. In Chaotix he can wall jump. He should do the same here!
+							//For HyperMighty, we should trigger a screen destroy when he hits the ground.
+							//down jump will stomp
+							//jump against a wall he will latch
+							//any other should do nothing.
+
+							BubbleDrop = false
+
+							u8 input = control.player1.state & 0x0f	// Only directions
+
+							u8 sproing = System.getGlobalVariableValueByName("powerspringtimer_p1")
+
+							// Elemental Shields
+							if (Mighty_ElemenShi == 1 && ( (Mighty_Custom_Mappings == 0 && input_pressed & Shield_Button) || (Mighty_Custom_Mappings == 1 && input_pressed & CONTROL_C) ) && !super.active && (char.bonus_effect & char.bonus.INVINCIBLE) == 0)
+							{
+								if (char.bonus_effect & char.bonus.SHIELD_FIRE)
+								{
+									u8[0xffffcd08] = 1		// That's 0x20 inside the shield object at 0xffffcce8
+									char.double_jump_state = 1
+
+									sproing = max(sproing , 6)
+									System.setGlobalVariableValueByName("powerspringtimer_p1", sproing)
+
+									s16 vx = 0x800
+									if (char.flags & char.flag.FACING_LEFT)
+										vx = -vx
+
+									char.velocity.x = vx
+									char.velocity.y = 0
+									char.groundspeed = vx
+									camera.locktime.player1 = 0x2000
+									ClearPositionBackup()
+									playSound(SFX_FIRESHIELDDASH)
+								}
+								else if (char.bonus_effect & char.bonus.SHIELD_LIGHTNING)
+								{
+									u8[0xffffcd08] = 1
+									char.double_jump_state = 1
+
+									sproing = max(sproing , 0)
+									System.setGlobalVariableValueByName("powerspringtimer_p1", sproing)
+
+									char.velocity.y = -0x580
+									char.jumping = 0
+									playSound(SFX_LIGHTNINGJUMP)
+								}
+								else if (char.bonus_effect & char.bonus.SHIELD_BUBBLE)
+								{
+									u8[0xffffcd08] = 1
+									BubbleBounce = 1
+									BubbleDrop = true
+
+									sproing = max(sproing , 3)
+									System.setGlobalVariableValueByName("powerspringtimer_p1", sproing)
+
+								#if STANDALONE
+									if (!Game.getSetting(SETTING_BUBBLE_SHIELD_BOUNCE))
+								#endif
+									{
+										char.velocity.x = 0
+									}
+									char.velocity.y = 0x800
+									char.groundspeed = 0
+									playSound(SFX_BUBBLEBOUNCE)
+								}
+							}	
+
+							//wall jump should be checked BEFORE the rest.
+							//Is mighty against a wall, and is the player pressing an horizontal direction?
+							//V1.1 - Wall Jump Must be enabled
+							bool IsFacingLeft = (char.flags & char.flag.FACING_LEFT)
+							bool OutofBounds = s16(char.position.y.u16) <= s16(level.vertical_wrap + char.hitbox_extends.y)
+							if (super.active || (Mighty_Custom_Mappings == 0 && ((input_pressed & Shield_Button) == 0)) || (Mighty_Custom_Mappings == 1 && ((input_pressed & CONTROL_C) == 0)) || ((char.bonus_effect & char.bonus.ANY_SHIELD) == 0) || (char.bonus_effect & char.bonus.INVINCIBLE) || Mighty_ElemenShi != 1)
+							{
+								char.double_jump_state = 0
+								if ((knuckles.preventclimbing & 0x80) == 0 && !OutofBounds && char.state == char.state.ROLLING && ((Mighty_Custom_Mappings == 0 && (input_pressed & Wall_Jump_Button)) || Mighty_Custom_Mappings == 1) && MightyCollisionTimer > 0 && ( (MightyWallCollision == 1 && control.player1.state & CONTROL_RIGHT && !IsFacingLeft) || (MightyWallCollision == 2 && control.player1.state & CONTROL_LEFT && IsFacingLeft) ))
+								{
+									s16(char.position.y.u16) <= s16(level.vertical_wrap + char.hitbox_extends.y)
+									u8[A0 + 0x0d] |= 0x40 // MightyWallLatch = true
+									MightyWasRolling = false
+									playSound(SFX_GRAB)
+									//compared to chaotix, I'll have mighty hold position for a while
+
+									MightyFrameCounter = 0
+									MightyYCollision = char.position.y.u16								
+									//force speed
+									if (MightyWallJump == 1)
+										char.velocity.y -= abs(-(char.velocity.y))
+									else
+										char.velocity.y = 0
+									
+									char.velocity.x = 0		
+									return //Don't check anything else, he's on the wall!
+								}
+
+								if (char.state == char.state.ROLLING && !hammercontrol && ((Mighty_Custom_Mappings == 0 && (input_pressed & Hammerdrop_Button)) || Mighty_Custom_Mappings == 1))
+								{
+									if (super.active & 0x80) //&& (control.player1.state & CONTROL_DOWN))
+									// Hyper, DOWN PRESSED
+									{
+										if (abs(char.velocity.x) > 0x400)
+											char.velocity.x = 0x400 * (char.velocity.x / abs(char.velocity.x))
+										char.double_jump_state = 1
+										char.velocity.y = 0x999
+										char.groundspeed = 100
+										playSound(SFX_SPINDASH_RELEASE)
+										Audio.playAudio("peelout_release", AudioContext.CONTEXT_SOUND) //stronger sound for hyper form
+										char.jumping = 0
+										char.flags |= char.flag.ROLLING
+										u8[A0 + 0x0d] |= 0x02
+									}
+									else //normal or wall latch. Mighty can do them even when invincible, so no problems here
+									{
+										if (true) //(control.player1.state & CONTROL_DOWN) //stomp
+										{
+											if (abs(char.velocity.x) > 0x400)
+												char.velocity.x = 0x400 * (char.velocity.x / abs(char.velocity.x))
+											char.double_jump_state = 1
+											char.velocity.y = 0x999
+											char.groundspeed = 100
+											playSound(SFX_SPINDASH_RELEASE)
+											char.jumping = 0
+											char.flags |= char.flag.ROLLING
+											//set drop flag
+											u8[A0 + 0x0d] |= 0x02
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			u16 CharXBackup = char.position.x.u16
+			u16 CharYBackup = char.position.y.u16
+			
+			if (u8[A0 + 0x0d] & 0x40) //already attached, counting for falling, keep the position
+			{
+				hammercontrol = false
+				if (MightyWallJump == 1) // Megamix Wall Jump
+				{
+					if ((input_pressed & CONTROL_ABC) != 0) // If the player is pressing to stay on the wall
+					{
+						char.state = char.state.ROLLING
+						char.flags &= ~char.flag.CONTROL_LOCK
+						// char.position.y.u16 = MightyYCollision
+						char.position.x.u16 = MightyXCollision
+						char.velocity.y = 0
+						u8[A0 + 0x0d] &= ~0x40
+						u8[A0 + 0x2a] |= 0x80
+						//set everything back in a jump state
+						//jump direction depends if up is pressed or not, underwater and super
+						u16 acceleration = (char.flags & char.flag.UNDERWATER) ? 0x380 : (super.active) ? 0x800 : 0x680
+						char.velocity.y -= acceleration
+						if (MightyWallCollision == 1)
+						{//right wall						
+							char.velocity.x -= acceleration							
+						}
+						else
+						{//left wall
+							char.velocity.x += acceleration						
+						}																
+					//	MightyFrameCounter = 0
+						MightyWallCollision = 0
+						MightyCollisionTimer = 0
+						
+						char.double_jump_state = 0
+						char.flags |= char.flag.IN_AIR
+						char.flags &= ~char.flag.PUSHING
+						char.jumping = 1
+						char.on_convex_surface = 0
+						playSound(SFX_JUMP)
+					}
+					else
+					{
+						char.double_jump_state = 1
+						char.flags |= char.flag.CONTROL_LOCK
+						if (char.velocity.y > 0)
+							char.velocity.y = 0x40
+						char.velocity.x = 0
+					//	MightyFrameCounter = MightyFrameCounter + 1
+						char.position.y.u16 = MightyYCollision
+						//NOTE forcing a direction here is too soon
+						if (MightyWallCollision == 1)
+						{//right wall						
+							char.flags &= ~char.flag.FACING_LEFT							
+						}
+						else
+						{//left wall
+							char.flags |= char.flag.FACING_LEFT						
+						}
+					}
+
+				}
+				else // Chaotix Wall Jump
+				{
+					bool IsFacingLeft = (char.flags & char.flag.FACING_LEFT)
+					if ((input_state & CONTROL_ABC) != 0) // If the player is pressing to stay on the wall
+					{
+						char.double_jump_state = 1
+						char.flags |= char.flag.CONTROL_LOCK
+						char.velocity.y = 0
+						char.velocity.x = 0
+						MightyFrameCounter = MightyFrameCounter + 1
+						char.position.y.u16 = MightyYCollision
+						//NOTE forcing a direction here is too soon
+						if (MightyWallCollision == 1)
+						{//right wall						
+							char.flags &= ~char.flag.FACING_LEFT							
+						}
+						else
+						{//left wall
+							char.flags |= char.flag.FACING_LEFT						
+						}
+						
+						if (MightyFrameCounter > 60)
+						{ //fall down if attached too long
+							ForceDetatchfromWall()
+						}
+					}
+					else
+					{
+						char.state = char.state.ROLLING
+						char.flags &= ~char.flag.CONTROL_LOCK
+						// char.position.y.u16 = MightyYCollision
+						char.position.x.u16 = MightyXCollision
+						char.velocity.y = 0
+						u8[A0 + 0x0d] &= ~0x40
+						u8[A0 + 0x2a] |= 0x80
+						//set everything back in a jump state
+						//jump direction depends if up is pressed or not, underwater and super
+						u16 acceleration = (char.flags & char.flag.UNDERWATER) ? 0x380 : (super.active) ? 0x800 : 0x680
+						if ((control.player1.state & CONTROL_UP))
+						{
+							char.velocity.y -= acceleration
+							if (IsFacingLeft && (control.player1.state & CONTROL_RIGHT) && MightyWallCollision == 2)
+							{
+								char.velocity.x += acceleration	
+							}
+							else if (!IsFacingLeft && (control.player1.state & CONTROL_LEFT) && MightyWallCollision == 1)
+								char.velocity.x -= acceleration	
+						}
+						else if (control.player1.state & CONTROL_DOWN)
+						{
+							char.velocity.y += acceleration
+							if (IsFacingLeft && (control.player1.state & CONTROL_RIGHT) && MightyWallCollision == 2)
+							{
+								char.velocity.x += acceleration	
+							}
+							else if (!IsFacingLeft && (control.player1.state & CONTROL_LEFT) && MightyWallCollision == 1)
+								char.velocity.x -= acceleration	
+						}
+						else
+						{
+							u16 horizontal_acceleration = (char.flags & char.flag.UNDERWATER) ? 0x540 : (super.active) ? 0xC00 : 0x9C0			
+							// acceleration = acceleration
+							char.velocity.y -= ((char.flags & char.flag.UNDERWATER) ? (0x380/2) : 0x380)
+							if (MightyWallCollision == 1)
+							{//right wall						
+								char.velocity.x -= horizontal_acceleration					
+							}
+							else
+							{//left wall
+								char.velocity.x += horizontal_acceleration				
+							}																
+						}
+						MightyFrameCounter = 0
+						MightyWallCollision = 0
+						MightyCollisionTimer = 0
+						
+						char.double_jump_state = 0
+						char.flags |= char.flag.IN_AIR
+						char.flags &= ~char.flag.PUSHING
+						char.jumping = 1
+						char.on_convex_surface = 0
+						playSound(SFX_JUMP)
+					}
+				}
+			}
+			char.position.x.u16 = CharXBackup	
+			char.position.y.u16 = CharYBackup
+		}
+	}
+	else
+	{
+		if (char.spindash == 0)
+		{
+			char.velocity.y = max(char.velocity.y, -0x0fc0)
+		}
+	}
+}
+
+function void CompetitionMode.Character.BaseUpdate(u32 mainRoutineTableAddress)
+{
+	if (competition.xtrachar == 0x01 && HD_Bounce == 6)
+		HeldBounce()
+	base.CompetitionMode.Character.BaseUpdate(mainRoutineTableAddress)
+}
+
+
+function void HeldBounce()
+{
+	if (A0 == 0xffffb000)
+	{
+		if (player1.control_override == 0)
+		{
+			control.player1 = control.pad1
+		}
+	}
+	else
+	{
+		if (player2.control_override == 0)
+		{
+			control.player1 = control.pad2
+		}
+	}
+	// u8 input_state     = (char.character == CHARACTER_TAILS) ? control.tails.state   : control.player1.state
+	if (char.double_jump_state != 0)
+	{	
+		//Bounce Mighty up slightly
+		if (u8[A0 + 0x0d] & 0x02) // if MightyDropDown is true
+		{
+			char.jumping = 1
+			hammercontrol = true
+			if ((Mighty_Custom_Mappings == 1 && (control.player1.state & CONTROL_ABC)) || (Mighty_Custom_Mappings == 0 && (control.player1.state & Hammerdrop_Button)))
+			{
+				if (Held_Bounce_Vel < 0x700)
+					Held_Bounce_Vel += 0xE0
+			}
+			else
+			{
+				if (Held_Bounce_Vel > 0)
+					Held_Bounce_Vel -= 0x20
+			}
+		}
+	}
+}
+
+global bool Mighty_Twirl
+
+//# address-hook(0x011036) end(0x01105e)
+function void Character.UpdateSonicRollingInAir()
+{
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.Character.UpdateSonicRollingInAir()
+		return
+	}
+
+	Character.UpdateMightyRollingInAir()
+}
+
+
+function void Character.UpdateMightyRollingInAir()
+{
+	//v1.11 - Kill all on a successful bounce
+	//made here to prevent a glitch when bouncing on spikes
+	if (Mighty.KillOnScreen)
+	{
+		Character.ClearEnemiesOnScreen()
+		Mighty.KillOnScreen = false
+	}
+
+	Character.updateJumpMoves()
+	bool OutofBounds = s16(char.position.y.u16) <= s16(level.vertical_wrap + char.hitbox_extends.y)
+	if (u8[A0 + 0x0d] & 0x40)//no update if hanging on wall
+	{
+		// This is incase Mighty is in the quicksand in SOZ, bounces off of the spiker enemies in MGZ, or climbs past the boundries of the camera.
+		if ((char.flags & char.flag.ON_OBJECT) != 0 || char.jumping == 0 || OutofBounds)
+			ForceDetatchfromWall()
+
+		if (char.velocity.y < 0 && MightyWallJump == 1) // top raycast
+		{
+			D2.u16 = char.position.y.u16 + (global.inv_gravity ? 11 : -11)
+			fn016f4e()
+			if (D1.s16 >= 4)
+			{
+				if (!(control.player1.state & CONTROL_DOWN))
+				{
+					Mighty_Twirl = true
+					char.state = char.state.STRAIGHTJUMP
+				}
+				ForceDetatchfromWall()
+				char.velocity.y = (char.flags & char.flag.UNDERWATER) ? -0x380 : (super.active) ? -0x800 : -0x680
+				playSound(SFX_JUMP)
+			}
+		}
+		else // bottom raycast
+		{//Incase Mighty is pushed off of a wall by a moving object (like the HCZ pillars)
+			D2.u16 = char.position.y.u16 + (global.inv_gravity ? -11 : 11)
+			fn016f4e()
+			if (D1.s16 >= 4)
+				ForceDetatchfromWall()
+		}
+
+		if (MightyWallJump == 1)
+		{
+			Character.CheckCollision()
+			Character.UpdateMovement()
+		}
+
+		return
+	}
+	if (HD_Bounce == 6)
+		HeldBounce()
+
+	RollingIntoSpikes = false
+
+	//V1.11 Any air-unroll bounce fix. If not rolling in the air, for ANY reason (spring, air current...) you must count as bounced
+	if (char.state != char.state.ROLLING && !MightyBounced && (Mighty_Level_Transition_Fall || !ShouldUncurl) && !FallingFix)
+		MightyBounced = true
+	
+	Character.UpdateControlInAir()
+	Character.CheckAgainstMoveBorders()
+	Character.UpdateMovement()
+
+	if (char.flags & char.flag.UNDERWATER)
+	{
+		// Gravity
+		char.velocity.y -= 0x28
+	}
+
+	Character.UpdateRotationInAir()
+	Character.CheckCollision()
+}
+
+global u8 HD_Bounce
+global u8 HD_Shake
+
+global bool Slope_Bounce
+global u16 Held_Bounce_Vel
+
+define bool hammercontrol = u8[0xffffF63C + ((A0 == 0xffffb000) ? 0 : 0x01)]
+
+function void fn030cf8()
+{
+	base.fn030cf8()
+	// Fixes bug in HCZ where the hammer drop or bubble shield could misalign a character
+	// This is going to be fixed in the next update, so I might remove this or add a version check
+	if (u8[A1 + 0x2e] & 0x81)
+		objA1.flags2a &= ~char.flag.IN_AIR
+}
+
+function void Mighty.LandingOnGroundResetState()
+{
+	FallingFix = false
+	ShouldUncurl = false
+	Do_not_flash = false
+	if !(((u32[char.object_standing_on + 0xffff0000] == 0x024090) || (u32[char.object_standing_on + 0xffff0000] == 0x022ef4) || (u32[char.object_standing_on + 0xffff0000] == 0x03cb66)) && (char.flags & char.flag.ON_OBJECT))
+		bouncy = true
+	FreeFall = 0 // No more falling
+	char.flags &= ~char.flag.IN_AIR
+	char.flags &= ~char.flag.PUSHING
+	char.flags &= ~char.flag.CONTROL_LOCK
+	char.jumping = 0
+	score.bonus_counter = 0		// No more increasing bonuses after hitting the ground
+	char.rotation.x = 0
+	u8[A0 + 0x2d] = 0
+	u8[A0 + 0x30] = 0
+	char.look_up_down_timer = 0
+	//reset wall jump in any case
+	u8[A0 + 0x2a] &= ~0x80
+	u8[A0 + 0x0d] &= ~0x40
+
+	if ((u32[char.object_standing_on + 0xffff0000] == 0x032aae || u32[char.object_standing_on + 0xffff0000] == 0x032b8c) && char.flags & char.flag.ON_OBJECT) // MGZ and ALZ tarpits coded by GFX32
+	{
+		u8[A1 + 0x0d] &= ~0x02
+	}
+	// Check for double jump state
+	if (char.double_jump_state != 0)
+	{	
+		//Bounce Mighty up slightly		
+		if (u8[A0 + 0x0d] & 0x02) // if MightyDropDown is true
+		{
+			char.jumping = 1
+			hammercontrol = true
+
+			s16 backupVel = char.velocity.x
+			char.velocity.x = 0
+
+			u8 sproing = System.getGlobalVariableValueByName("powerspringtimer_p1")
+			sproing = max(sproing , 6)
+			System.setGlobalVariableValueByName("powerspringtimer_p1", sproing)
+
+			bool Lava_Electric_Check = ((u8[A1 + 0x2b] & char.bonus.SHIELD_FIRE) || (u8[A1 + 0x2b] & char.bonus.SHIELD_LIGHTNING) || u8[A1 + 0x34] != 0 || (u8[A1 + 0x2b] & char.bonus.INVINCIBLE) != 0 || super.active)
+
+			bool Standing = !((((u32[char.object_standing_on + 0xffff0000] == 0x024090) && !(u8[A1 + 0x34] != 0 || (u8[A1 + 0x2b] & char.bonus.INVINCIBLE) != 0 || super.active)) || (u32[char.object_standing_on + 0xffff0000] == 0x022ef4) || (u32[char.object_standing_on + 0xffff0000] == 0x0427e2) || (u32[char.object_standing_on + 0xffff0000] == 0x023490) || (u32[char.object_standing_on + 0xffff0000] == 0x0462b6) || (u32[char.object_standing_on + 0xffff0000] == 0x0480d4) || (u32[char.object_standing_on + 0xffff0000] == 0x8b384) || ((u32[char.object_standing_on + 0xffff0000] == 0x01f45e) && !Lava_Electric_Check) || ((u32[char.object_standing_on + 0xffff0000] == 0x059fdc) && !Lava_Electric_Check) || (u32[char.object_standing_on + 0xffff0000] == 0x03cb66)) && (char.flags & char.flag.ON_OBJECT) || (objA1.update_address == 0x01a64a || objA1.update_address == 0x044048 || objA1.update_address == 0x042c80 || objA1.update_address == 0x03cf90 || objA1.update_address == 0x0263dc || objA1.update_address == 0x0917b4 || objA1.update_address == 0x0688f4) )
+
+			if (HD_Bounce != 5)
+			{
+				MightyWasDropin = true
+				s16 dy = s8(14 - char.hitbox_extends.y)
+				char.hitbox_extends.x = 7
+				char.hitbox_extends.y = 14
+				char.position.y.u16 += global.inv_gravity ? dy + 4 : -dy - 4
+
+				char.state = char.state.ROLLING
+				char.flags |= char.flag.ROLLING
+				char.spindash = 0
+				if (HD_Bounce == 1)
+				{
+					char.velocity.y = -0x20
+				}
+				else if (HD_Bounce == 6)
+				{
+					if (Held_Bounce_Vel == 0)
+					{
+						char.velocity.y = -0x20
+					}
+					else
+					{
+						char.velocity.y -= (char.flags & char.flag.UNDERWATER) ? (Held_Bounce_Vel / 2) : (competition_mode.active) ? ((Held_Bounce_Vel / 2) + 0x100) : Held_Bounce_Vel
+					}
+				}
+				else
+				{
+					if (char.flags & char.flag.UNDERWATER) //much weaker underwater
+						char.velocity.y = (HD_Bounce == 0) ? -0x200 : (HD_Bounce == 2) ? -0x100 : (HD_Bounce == 3) ? -0x280 : -0x380
+					else if (competition_mode.active)
+						char.velocity.y = (HD_Bounce == 0) ? -0x300 : (HD_Bounce == 2) ? -0x180 : (HD_Bounce == 3) ? -0x380 : -0x480
+					else
+						char.velocity.y = (HD_Bounce == 0) ? -0x400 : (HD_Bounce == 2) ? -0x200 : (HD_Bounce == 3) ? -0x500 : -0x700
+				}
+				
+				if (!(u8[A0 + 0x2a] & char.flag.ON_OBJECT))
+				{
+					MightyLandingBounce()
+				}
+				char.velocity.x += backupVel
+				objA0.state = char.state.ROLLING
+				objA0.flags2a |= (char.flag.IN_AIR | char.flag.ROLLING)
+			}
+
+			if (!competition_mode.active && Standing && !MightyDustControl)
+			{
+				SpawnDustClouds()
+			}
+			GfxMightySmashing = 3
+
+			if (Standing)
+				playSound(0x5f)
+
+			//stop the animation effect and reset its counter
+			u8[A0 + 0x0d] &= ~0x02
+			MightyWallCollision = 0
+			MightyFrameCounter = 0
+			if ((HD_Shake == 0 || (!super.active && HD_Shake == 1) || (super.active && HD_Shake == 2)) && Standing && !MightyDustControl)
+			{
+			#if GAMEAPP >= 0x22121500 // Latest update
+				Input.setControllerRumble(-1, 0.5f, 69.0f, 300)
+			#endif
+				camera.hyper_knux_shake = 0x0114
+			}
+			
+			//if hyper clear enemies too
+			if (super.active & 0x80)
+			{
+				//Character.ClearEnemiesOnScreen() V1.11 somehow it bugs hitting spikes with a drop!
+				if (HD_Bounce == 5)
+					Character.ClearEnemiesOnScreen()
+				else
+					Mighty.KillOnScreen = true
+				global.whiteflash_timeout = 4
+			}
+		}
+		char.double_jump_state = 0
+		Held_Bounce_Vel = 0		
+	}
+	if (BubbleBounce && !super.active && (char.bonus_effect & char.bonus.SHIELD_BUBBLE) && ((char.bonus_effect & char.bonus.INVINCIBLE) == 0))
+	{
+		System.setGlobalVariableValueByName("powerspringtimer_p1", 3)
+		SonicLandingBubbleBounce()
+	}
+	BubbleBounce = 0
+	MightyDustControl = 0
+
+	// Fix for small FBZ spiked orbs
+	bool is_invincible = (u8[A0 + 0x34] != 0 || (u8[A0 + 0x2b] & char.bonus.INVINCIBLE) != 0 || super.active)
+	if (!is_invincible && u32[char.object_standing_on + 0xffff0000] == 0x03b8c2 && (objA1.flags2a & 0x08) && char.state.former == char.state.ROLLING)
+	{
+		if (char.flags & char.flag.ON_OBJECT)
+		{
+			char.state = char.state.ROLLING
+			char.flags |= char.flag.ROLLING
+
+			if (obj_to_ignore != A1)
+			{
+				is_spikyfunc()
+			}
+		}
+	}
+
+	// Fix for the SSZ spike swing
+	if ((u32[char.object_standing_on + 0xffff0000] == 0x0462b6) && (char.flags & char.flag.ON_OBJECT))
+	{
+		char.state = char.state.ROLLING
+		char.flags |= char.flag.ROLLING
+	}	
+}
+
+//landing on the ground with the drop
+function void Character.LandingOnGroundResetState()
+{
+	//only mighty enters this custom
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.Character.LandingOnGroundResetState()
+		return
+	}
+	Mighty.LandingOnGroundResetState()
+}
+
+global s16 dust_speed
+
+function void SpawnDustClouds()
+{
+	u32 A1backup = A1
+	
+	u8 count = 6
+	
+	dust_speed = 0x100
+	
+	while count > 0
+	{
+		--count
+		
+		if (allocDynamicObjectStd())
+		{
+			if global.inv_gravity
+			{
+				u8[A1 + 0x04] = (render_flag.WORLD)
+				objA1.update_address = 0x2000D6
+				//u16[A1 + 0x0a] = 0xa6bc
+				//u32[A1 + 0x0c] = 0x01a99a
+				objA1.position.y = objA0.position.y
+				objA1.position.x = objA0.position.x
+				objA1.state = 0
+				objA1.sprite_attributes = objA0.sprite_attributes
+				
+				objA1.position.y.u16 -= 0xf
+				
+				objA1.velocity.x = dust_speed
+				
+				if char.rotation
+				{
+					objA1.flags2a = 1
+				}
+			}
+			else
+			{
+				u8[A1 + 0x04] = (render_flag.WORLD)
+				objA1.update_address = 0x2000D4
+				//u16[A1 + 0x0a] = 0xa6bc
+				//u32[A1 + 0x0c] = 0x01a99a
+				objA1.position.y = objA0.position.y
+				objA1.position.x = objA0.position.x
+				objA1.state = 0
+				objA1.sprite_attributes = objA0.sprite_attributes
+				
+				objA1.position.y.u16 += 0xf
+				
+				objA1.velocity.x = dust_speed
+
+				if abs(char.rotation) > 0x18
+				{
+					s8[A1 + 0x2f] = abs(char.rotation) / 7
+				}
+
+				if abs(char.rotation) > 0x4
+				{
+					objA1.flags2a = 1
+				}
+			}
+		}
+		if dust_speed < 0
+		{
+			dust_speed = -dust_speed
+			dust_speed += 0x80
+		}
+		else
+		{
+			dust_speed = -dust_speed
+		}
+		
+		if (!allocDynamicObjectStd())
+			return
+	}
+	
+	dust_speed = 0x80
+	
+	A1 = A1backup
+}
+
+//# address-hook(0x2000D4)
+function void Character.UpdateDustClouds()
+{
+	if (objA0.state > 79)
+	{
+		UnloadObject()
+		return
+	}
+	objA0.position.x += objA0.velocity.x
+	UpdateMovementStraightSimple()
+	
+	if objA0.flags2a == 1
+	{
+		u16 backupY = objA0.position.y.u16
+		if !(u16[0xffffb000 + 0x46] & 2)	// What path is Mighty on?
+		{
+			D5 = 0x0c
+			checkStaticCollisionVertical(objA0.position.x.u16, objA0.position.y.u16, 0xfffff768, 0x10, 0)
+		}
+		else
+		{
+			D5 = 0x0f
+			checkStaticCollisionVertical(objA0.position.x.u16, objA0.position.y.u16, 0xfffff768, 0x10, 1)
+		}
+		D1.u16 -= 2
+		objA0.position.y.u16 += D1.u16
+		s16 backupDist = D1.s16
+		
+		if !(u16[0xffffb000 + 0x46] & 2)	// What path is Mighty on?
+		{
+			D5 = 0x0c
+			checkStaticCollisionVertical(objA0.position.x.u16, objA0.position.y.u16, 0xfffff768, 0x10, 0)
+		}
+		else
+		{
+			D5 = 0x0f
+			checkStaticCollisionVertical(objA0.position.x.u16, objA0.position.y.u16, 0xfffff768, 0x10, 1)
+		}
+		D1.u16 -= 2
+		if !(abs(D1.u16) < 0x6)
+		{
+			objA0.flags2a = 2
+			objA0.position.y.u16 = backupY
+		}
+		else
+		{
+			s8[A0 + 0x2f] = backupDist
+		}
+	}
+	else //if (objA0.flags2a == 2)
+	{
+		s8[A0 + 0x2f] = min(s8[A0 + 0x2f], 0x4)
+		objA0.position.y.u16 += s8[A0 + 0x2f]
+	}
+	
+	objA0.position.x.u16 -= u16[0xffffeebc] // needed for level wrap
+	
+	objA0.value26 = objA0.state / 20
+	objA0.state += (abs(objA0.velocity.x) / 70)
+	
+	DrawObject()
+}
+
+//# address-hook(0x2000D6)
+function void Character.UpdateDustCloudsInverted()
+{
+	if (objA0.state > 79)
+	{
+		UnloadObject()
+		return
+	}
+	objA0.position.x += objA0.velocity.x
+	UpdateMovementStraightSimple()
+	
+	objA0.value26 = objA0.state / 20
+	objA0.state += abs(objA0.velocity.x) / 70
+	
+	objA0.position.x.u16 -= u16[0xffffeebc] // needed for level wrap
+	
+	DrawObject()
+}
+
+//# address-hook(0x012232) end(0x0122b8)
+function void MightyLandingBounce()
+{
+	s16 force.x = (char.flags & char.flag.UNDERWATER) ? 0x580 : 0x900
+	s16 force.y = -(char.velocity.y)
+
+	s16 vx = mainchar.groundhit.velocity.x
+	s16 vy = mainchar.groundhit.velocity.y
+	u8 moveAngle = lookupAngleByVector(vx, vy)
+	u8 groundAngle = char.rotation
+	u8 reflectedAngle = groundAngle * 2 - moveAngle
+	char.velocity.x = (s32(lookupCos(reflectedAngle)) * force.x) >> 8
+	char.velocity.y = (s32(lookupSin(reflectedAngle)) * force.y) >> 8
+}
+
+// Fix for spinning blue top in MGZ
+// where the hammerdroping onto it would cause Mighty to softlock
+//# address-hook(0x034f6a) end(0x034fba)
+function void fn034f6a()
+{
+    if (objA1.flags2a & char.flag.IN_AIR)
+    {
+        return
+    }
+    base.fn034f6a()
+}
+
+// This entire functions is just so that Mighty can have his balancing animations while he's super/hyper
+function void checkForBalancing()
+{
+	if (char.character != CHARACTER_SONIC || global.xtrachar != 1)
+	{
+		base.checkForBalancing()
+		return 
+	}
+
+	s8 balancing = 0
+
+	if (char.flags & char.flag.ON_OBJECT)
+	{
+		// Standing on an object, get its address in RAM
+		A1 = 0xffff0000 + char.object_standing_on
+
+		// Some kind of "no balancing here" flag?
+		//  -> I could not find any use-case for it, but using it in AIR for the mgz_spinwheeltrigger
+		if ((u8[A1 + 0x2a] & 0x80) == 0)
+		{
+			if (char.character == CHARACTER_SONIC)
+			{
+				D1.u16 = objA1.box_size.x + char.position.x.u16 - objA1.position.x.u16
+				D2.u16 = objA1.box_size.x * 2 - 2
+
+				if (D1.s16 < 2)
+				{
+					balancing = -1
+					if (D1.s16 < -4)
+						balancing = -2
+				}
+				else if (D1.s16 >= D2.s16)
+				{
+					balancing = 1
+					if (D1.s16 >= D2.s16 + 6)
+						balancing = 2
+				}
+			}
+		}
+	}
+	else
+	{
+		// Not on an object
+		D3.u16 = char.position.x.u16
+		fn012006()
+
+		if (D1.s16 >= 0x0c)
+		{
+			if (char.angle_sensor_1 == 0x03)
+			{
+				balancing = 1
+				if (char.character == CHARACTER_SONIC)
+				{
+					D3.u16 = char.position.x.u16 - 6
+					fn012006()
+					if (D1.s16 >= 0x0c)
+						balancing = 2
+				}
+			}
+			else if (char.angle_sensor_2 == 0x03)
+			{
+				balancing = -1
+				if (char.character == CHARACTER_SONIC)
+				{
+					D3.u16 = char.position.x.u16 + 6
+					fn012006()
+					if (D1.s16 >= 0x0c)
+						balancing = -2
+				}
+			}
+		}
+	}
+
+	if (balancing != 0)
+	{
+		// Set balancing state 1 or 2 (only Sonic actually uses balancing state 2)
+		char.state = (abs(balancing) < 2) ? char.state.BALANCING1 : char.state.BALANCING2
+
+		// Face left or right, depending on where we are balancing
+		bool wasFacingLeft = (char.flags & char.flag.FACING_LEFT)
+		bool nowFacingLeft = (balancing < 0)
+
+		if (nowFacingLeft)
+			char.flags |= char.flag.FACING_LEFT
+		else
+			char.flags &= ~char.flag.FACING_LEFT
+	}
+}
+
+
+//# address-hook(0x00fe8e) end(0x00ff04)
+function void Character.CheckCollisionsWithDynamicObjects()
+{
+	if (global.xtrachar != 1 || char.character != CHARACTER_SONIC)
+	{
+		base.Character.CheckCollisionsWithDynamicObjects()
+		return
+	}
+
+	// Fix so that Mighty can hammer drop on moving objects like the CNZ barrel
+	if (char.control_flags & 0x01)
+   		hammercontrol = false
+    
+	if (u8[A0 + 0x0d] & 0x40)
+	{
+		char.state = char.state.RUNNING
+
+		// Pretty sure this will only be used with the megamix wall jump.
+		if (char.hitbox_extends.y == 0x13) // This is only here if the user uses debug mode and it restes the wall jump hit box back to the normal standing hitbox. 
+			char.hitbox_extends.y = 0x0e
+	}
+	SonicUpdateRingCollection()
+	UpdateShieldDeflecting()
+
+	D5 = char.hitbox_extends.y - 3
+	D2 = char.position.x.u16 - 8
+	D3 = char.position.y.u16 - D5.u16
+	D4 = 16
+	D5 *= 2
+	Character.CheckCollisionsWithDynamicObjects_partial()
+}
+
+//landing on things with the drop skill
+//# address-hook(0x00ffd4) end(0x010214)
+function void Character.OnCollisionWithDynamicObject()
+{
+	// Example values for u8[A1 + 0x28]:
+	//  - 0x06, 0x0b, 0x17, 0x1a = Different types of enemies
+	//  - 0x0f		 = Boss enemy
+	//  - 0x18		 = Extended arm of DEZ Chainspike
+	//  - 0x23		 = AIZ Bloominator
+	//  - 0x46		 = Monitor
+	//  - 0x47		 = Dynamic ring
+	//  - 0x87		 = Extended arm of SOZ Skorp
+	//  - 0x8b, 0x9c = Flames, damaging parts of enemies
+	//  - 0x8f		 = Wrecking ball
+	//  - 0x98, 0x9b = Projectile
+	//  - 0xd8		 = Thrown mushroom, stars over starpost
+//only mighty enters this custom
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.Character.OnCollisionWithDynamicObject()
+		return
+	}
+	else
+	{
+		D1.u8 = u8[A1 + 0x28] & 0xc0
+		if (D1.u8 == 0)
+		{
+			// Collision is an enemy, i.e. is harmful, but can be attacked
+			bool attacking = false
+			if (char.bonus_effect & char.bonus.INVINCIBLE)
+			{
+				attacking = true
+			}
+			else if (char.state == char.state.ROLLING || char.state == char.state.SPINDASH)
+			{
+				attacking = true
+			}
+			if (!attacking)
+			{
+				bool isThreat = false
+				if (char.character == CHARACTER_SONIC || char.double_jump_state == 0 || (char.flags & char.flag.UNDERWATER))
+				{
+					isThreat = true
+				}
+				else
+				{
+					s16 dx = char.position.x.u16 - objA1.position.x.u16
+					s16 dy = char.position.y.u16 - objA1.position.y.u16
+					D0.u8 = lookupAngleByVector(dx, dy) - 0x20
+					isThreat = (D0.u8 >= 0x40)
+				}
+
+				if (isThreat)
+				{
+					Character.OnThreatCollision()
+					return
+				}
+			}
+
+			if (u8[A1 + 0x29] != 0)
+			{
+				char.velocity.x = -char.velocity.x
+				//bounce only if not using dropdown
+				if (!(u8[A0 + 0x0d] & 0x02))
+				{
+					char.velocity.y = -char.velocity.y
+				}
+				char.groundspeed = -char.groundspeed
+				u8[A1 + 0x1c] = A0.u8
+				u8[A1 + 0x25] = u8[A1 + 0x28]
+				u8[A1 + 0x28] = 0
+				--u8[A1 + 0x29]
+				if (u8[A1 + 0x29] == 0)
+				{
+					u8[A1 + 0x2a] |= 0x80
+				}
+				
+			}
+			else
+			{
+				if (u8[A1 + 0x2a] & 0x04)
+				{
+					A2 = 0xffff0000 + u16[A1 + 0x3c]
+					u8[A2] &= ~(1 << u8[A1 + 0x3b])
+				}
+
+				u8[A1 + 0x2a] |= 0x80
+
+				// Grant bonus points
+				Enemy.addScore(A1, 0x010216)
+
+				objA1.update_address = 0x01e5e0
+				u8[A1 + 0x05] = 0
+				if (char.velocity.y < 0)
+				{
+					char.velocity.y += 0x100
+				}
+				else if (char.position.y.u16 >= objA1.position.y.u16)
+				{
+					char.velocity.y -= 0x100
+				}
+				else
+				{
+					//bounce only if not using dropdown
+					if (!(u8[A0 + 0x0d] & 0x02))
+					{
+						char.velocity.y = -char.velocity.y
+					}
+				}
+			}
+		}
+		else if (D1.u8 == 0x40)
+		{
+			D0.u8 = u8[A1 + 0x28] & 0x3f
+			if (D0.u8 != 0x06)
+			{
+				// Collect ring, but only after 30 invulnerability frames
+				//  -> Remember that the "char.invuln.countdown" timer starts at 120
+				u8 timer = competition_mode.active ? char.invuln.countdown : u8[0xffffb034]
+				if (timer < 90)
+				{
+					u8[A1 + 0x05] = 0x04
+				}
+			}
+			else
+			{
+				if (u8[A0 + 0x0d] & 0x02)
+				{
+					// Bounce off
+					//bounce only if not using dropdown
+					u8[A1 + 0x05] = 4
+					u16[A1 + 0x42] = A0.u16
+				}
+				else
+					base.Character.OnCollisionWithDynamicObject()
+			}
+		}
+		else if (D1.u8 == 0x80)
+		{
+			// Deflect the orange spikes during the DEZ act 1 boss, the stalactities in LRZ, the icicles in ICZ, the air born spikes from the little robots during the DEZ act 2 boss, and the relief arrows
+			if ((objA1.update_address == 0x07e972 || objA1.update_address == 0x27E2D0 || objA1.update_address == 0x07f62e || objA1.update_address == 0x0856de || objA1.update_address == 0x0428d6 || objA1.update_address == 0x034518) && (char.state == char.state.ROLLING || char.state == char.state.COWERING || char.state == char.state.SPINDASH))
+				deflectProjectile()
+			else
+			{
+				//We don't want Mighty to be invincible when bouncing off of spiky objects/enemies
+				if (!super.active && (char.bonus_effect & char.bonus.INVINCIBLE) == 0 && u8[A0 + 0x34] == 0)
+				{
+					if (Mighty_checkForSpikyObj())
+						return
+					// We don't want the value to get set when Mighty can't get hurt
+					if (!(objA1.flags2b & char.bonus.SHIELD_LIGHTNING) && !(objA1.flags2b & char.bonus.SHIELD_FIRE) && !(u8[A1 + 0x2b] & char.bonus.DEFLECTABLE)) // Makes sure the dust can still appear if Mighty has an elemental shield
+						MightyDustControl = 1 // used to disable dust when colliding with a harmful object.
+				}
+
+				// Harmful object
+				Character.OnThreatCollision()
+			}
+		}
+		else  // D1.u8 == 0xc0
+		{
+			// Bud fix when Mighty is latched onto a wall during the DEZ act 2
+			// and the yellow shield makes him stuck.
+			if (objA1.update_address == 0x07f344 && u8[A0 + 0x0d] & 0x40)
+				ForceDetatchfromWall()
+			// Other interactable object
+			fn0103ba()
+		}
+	}
+}
+
+global u32 obj_to_ignore
+global u8 obj_to_ignore_cooldown
+global bool Bounce_off
+
+// Little spike robots during the DEZ 2 Boss
+//# address-hook(0x07f9a8) end(0x07f9f6)
+function void fn07f9a8()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn07f9a8()
+		return
+	}
+
+	fn085870()
+	if (_equal())
+		return
+
+	if (u8[A1 + 0x20] == 0x02)
+	{
+		if ((u8[A1 + 0x2a] & 0x02) == 0)
+		{
+			D0.u16 = objA0.position.x.u16 - objA1.position.x.u16
+			D1.u8 = (D0.s16 < 0) ? 0xff : 0x00
+			D2.u16 = objA1.velocity.x
+			if (D2.s16 >= 0)
+			{
+				D1.u8 ^= 0xff
+			}
+			if (D1.u8 != 0)
+			{
+				D2.s16 = -D2.s16
+				objA1.velocity.x = D2.u16
+				s16[A1 + 0x1c] = -s16[A1 + 0x1c]
+			}
+			return
+		}
+	}
+
+	if (u8[A1 + 0x34] == 0)
+	{
+		if ((u8[A1 + 0x2b] & char.bonus.INVINCIBLE) == 0)
+		{
+			bool hurt = true
+			if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty 
+				hurt = TinySpikeCheck()
+			
+			if (hurt)
+				Enemy.DamageCharacter()
+		}
+	}
+}
+
+// Protect Mighty against Knuckles' fist spikes
+//# address-hook(0x0660a6) end(0x0660b8)
+function void fn0660a6()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn0660a6()
+		return
+	}
+
+	// Check against "char.invuln.countdown" and invincibility
+	if (u8[A1 + 0x34] == 0 && (u8[A1 + 0x2b] & char.bonus.INVINCIBLE) == 0)
+	{
+		bool hurt = true
+		if (u8[A1 + 0x38] == CHARACTER_SONIC && (objA0.base_state == 0x0c || objA0.base_state == 0x06)) //check for mighty 
+		{
+			hurt = TinySpikeCheck()
+		}
+		
+		if (hurt)
+			Enemy.DamageCharacter()
+	}
+}
+
+// Spike detection for the little spike robots
+function bool TinySpikeCheck()
+{
+	//if (char.state != char.state.ROLLING)
+	if (u8[A1 + 0x20] != 0x02)
+		return true
+	if (obj_to_ignore != A1)
+	{
+		obj_to_ignore_cooldown = 5
+		obj_to_ignore = A1
+	
+		objA1.groundspeed = 2* min(abs(objA1.groundspeed), 400)
+
+		// Change knockback if you're up against Knuckles
+		u16 knockback = (objA0.base_state == 0x0c || objA0.base_state == 0x06) ? 1400 : 400
+
+		objA1.velocity.x = 2 * min(abs(objA1.velocity.x), knockback)
+		
+		objA1.velocity.y = clamp(objA1.velocity.y, -800, 600)
+		
+		if (char.position.x > objA1.position.x)
+		{
+			objA1.groundspeed = -objA1.groundspeed
+			objA1.velocity.x = -objA1.velocity.x
+		}
+		
+		objA1.velocity.y = -objA1.velocity.y
+
+		LightSpikeBounce()
+	}
+	return false
+}
+
+function void LightSpikeBounce()
+{
+#if GAMEAPP >= 0x22121500 // Latest update
+	Input.setControllerRumble(-1, 0.5f, 14.0f, 250)
+#endif
+	playSound(0x6b)
+}
+
+// Protect Mighty against the SOZ act 2 boss's torso spikes 
+function void fn078136()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn078136()
+		return
+	}
+
+	if ((D6 & (1 << D0)) == 0)
+	{
+		u8 bit = (1 << D1.u8)
+		if ((objA0.flags2a & bit) == 0)
+			return
+
+		objA0.flags2a &= ~bit
+	}
+
+	u8[A1 + 0x2a] &= ~char.flag.ON_OBJECT
+	if (u8[A1 + 0x34] == 0)
+	{
+		if ((u8[A1 + 0x2b] & char.bonus.INVINCIBLE) == 0)
+		{
+			objA0.flags2a &= ~(object.flag.P1_PUSHING | object.flag.P2_PUSHING)
+			bool hurt = true
+			if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty 
+				hurt = Spike_Rebound()
+			
+			if (hurt)
+				DamageCharacter()
+		}
+	}
+}
+
+//Protect Mighty against the SOZ act 2 boss's hand spikes 
+function void fn078178()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn078178()
+		return
+	}
+
+	if (D6 & (1 << D0))
+	{
+		if (u8[A1 + 0x34] == 0)
+		{
+			D0.u16 = objA0.position.x.u16 - objA1.position.x.u16
+			if (D0.s16 >= 0)
+			{
+				if ((u8[A1 + 0x2b] & char.bonus.INVINCIBLE) == 0)
+				{
+					objA0.flags2a &= ~(object.flag.P1_PUSHING | object.flag.P2_PUSHING)
+					bool hurt = true
+					if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty 
+						hurt = Spike_Rebound()
+					
+					if (hurt)
+						DamageCharacter()
+				}
+			}
+		}
+	}
+}
+
+function bool Spike_Rebound()
+{
+	//if (char.state != char.state.ROLLING)
+	if (u8[A1 + 0x20] != 0x02)
+		return true // hurt
+	else if (u8[A1 + 0x34] != 0 || (u8[A1 + 0x2b] & char.bonus.INVINCIBLE) != 0 || super.active) 
+	{
+		MightyWasRolling = false
+		MightyFrameCounter = 0
+		MightyBounced = false
+		return true // hurt
+	}
+	else
+	{
+		
+		objA1.velocity.y = -0x400
+		objA1.velocity.x = (u8[A1 + 0x2a] & char.flag.FACING_LEFT) ? 0x300 : -0x300
+		
+		MightySpikeCollision = 0
+		objA1.state = char.state.FALLING_PANIC
+		objA1.flags2a |= char.flag.IN_AIR// | char.flag.ROLLING)
+
+		MightyBounced = true
+		u8[A1 + 0x34] = 120 // post hit invincibility
+		PlayspikebounceSFX()
+		return false
+	}
+}
+
+function void PlayspikebounceSFX()
+{
+	if (!MightyWasDropin)
+	{
+	#if GAMEAPP >= 0x22121500 // Latest update
+		Input.setControllerRumble(-1, 0.5f, 28.0f, 250)
+	#endif
+		playSound(0x49)
+	}
+}
+
+// MGZ moving totems
+//# address-hook(0x034728) end(0x0347fa)
+function void fn034728()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn034728()
+		return
+	}
+
+	u16 backup_px = objA0.position.x.u16
+	if (u8[A0 + 0x34] == 0)
+	{
+		++objA0.position.x.u16
+		D0.u16 = u16[A0 + 0x30] + 0x50
+		if (D0.u16 == objA0.position.x.u16)
+		{
+			u8[A0 + 0x34] = 0x01
+		}
+	}
+	else
+	{
+		--objA0.position.x.u16
+		D0.u16 = u16[A0 + 0x30] - 0x50
+		if (D0.u16 == objA0.position.x.u16)
+		{
+			u8[A0 + 0x34] = 0
+		}
+	}
+
+	D0 = u8[0xfffffe80] + objA0.value32
+	objA0.position.y.u16 = D0.u16
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y
+	D3.u16 = D2.u16 + 1
+	D4.u16 = backup_px
+	fn01dc56()
+
+	D6 = (D6 << 16) + (D6 >> 16)
+	if (D6.u8 & 0x01)
+	{
+		objA0.flags2a &= ~0x20
+		A1 = 0xffffb000
+		D0.u16 = objA1.position.y.u16 - objA0.position.y.u16 + 0x28
+		if (D0.s16 >= 0)
+		{
+			if (objA1.state == char.state.COWERING)
+			{
+				obj_to_ignore_cooldown = 30
+				obj_to_ignore = A0
+			
+				objA1.groundspeed = 600
+				
+				if (objA0.position.x > objA1.position.x)
+				{
+					objA1.groundspeed = -objA1.groundspeed
+					objA1.velocity.x = -objA1.velocity.x
+				}
+				
+				LightSpikeBounce()
+			}
+			else
+			{
+				bool hurt = true
+				if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty
+				{
+					MightySpikeCollision = 1
+					hurt = spikecheck()
+				}
+				if (hurt)
+					DamageCharacter()
+			}
+		}
+	}
+
+	if (D6.u8 & 0x02)
+	{
+		objA0.flags2a &= ~0x40
+		A1 = 0xffffb04a
+		D0.u16 = objA1.position.y.u16 - objA0.position.y.u16 + 0x28
+		if (D0.s16 >= 0)
+		{
+			DamageCharacter()
+		}
+	}
+
+	--objA0.animation.timer
+	if (s8(objA0.animation.timer) < 0)
+	{
+		objA0.animation.timer = 7
+		++objA0.animation.sprite
+		objA0.animation.sprite &= 0x03
+	}
+
+	D0.u16 = u16[A0 + 0x30]
+	DrawOrUnloadObjectByD0()
+}
+
+// mgz totem (the one used in the miniboss fight)
+//# address-hook(0x0888a6) end(0x088946)
+function void fn0888a6()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn0888a6()
+		return
+	}
+
+	if ((objA0.flags38 & 0x10) == 0)
+	{
+		u16 backup_px = objA0.position.x.u16
+		fn088976()
+
+		D1 = objA0.box_size.x + 11
+		D2 = objA0.box_size.y
+		D3.u16 = D2.u16 + 1
+		D4.u16 = backup_px
+		fn01dc56()
+
+		D6 = (D6 << 16) + (D6 >> 16)
+		if (D6.u8 & 0x01)
+		{
+			objA0.flags2a &= ~object.flag.P1_PUSHING
+			A1 = 0xffffb000
+			D0.u16 = objA1.position.y.u16 - objA0.position.y.u16 + 0x28
+			if (D0.s16 >= 0)
+			{
+				if (objA1.state == char.state.COWERING)
+				{
+					obj_to_ignore_cooldown = 30
+					obj_to_ignore = A0
+				
+					objA1.groundspeed = 600
+					
+					if (objA0.position.x > objA1.position.x)
+					{
+						objA1.groundspeed = -objA1.groundspeed
+						objA1.velocity.x = -objA1.velocity.x
+					}
+					
+					LightSpikeBounce()
+				}
+				else
+				{
+					bool hurt = true
+					if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty
+					{
+						MightySpikeCollision = 1
+						hurt = spikecheck()
+					}
+					if (hurt)
+						DamageCharacter()
+				}
+			}
+		}
+
+		if (D6.u8 & 0x02)
+		{
+			objA0.flags2a &= ~object.flag.P2_PUSHING
+			A1 = 0xffffb04a
+			D0.u16 = objA1.position.y.u16 - objA0.position.y.u16 + 0x28
+			if (D0.s16 >= 0)
+			{
+				DamageCharacter()
+			}
+		}
+
+		--objA0.animation.timer
+		if (s8(objA0.animation.timer) < 0)
+		{
+			objA0.animation.timer = 7
+			++objA0.animation.sprite
+			objA0.animation.sprite &= 0x03
+		}
+
+		DrawObject()
+	}
+	else
+	{
+		fn08594e()
+		UnloadObject()
+	}
+}
+
+// Spinning spiky platforms in SSZ
+//# address-hook(0x046324) end(0x046424)
+function void fn046324()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn046324()
+		return
+	}
+
+	u8 bit = (1 << D5.u8)
+
+	if (u8[A3] == 0)
+	{
+		if (u8[A1 + 0x2e] != 0 || u8[A1 + 0x05] >= 0x04)
+			return
+
+		if (objA0.flags2a & bit)
+		{
+			playSound(SFX_ROLL)
+			u8[A3] = 0xff
+
+			objA1.velocity.y = 0
+			objA1.velocity.x = 0
+			u16[A1 + 0x1c] = 0
+			u8[A1 + 0x1e] = 0x0e
+			u8[A1 + 0x1f] = 0x07
+			objA1.state = char.state.ROLLING
+			u8[A1 + 0x2a] |= char.flag.ROLLING
+			u8[A1 + 0x2e] = 0x01
+			u8[A1 + 0x3d] = 0
+
+			if (s8[A0 + 0x2c] < 0)
+			{
+				D0.u16 = objA0.flags2a & 0x01
+				u8[A1 + 0x2a] &= 0xfe
+				u8[A1 + 0x2a] |= D0.u8
+			}
+		}
+		else
+		{
+			D6.u16 &= 0x05
+			if (D6.u16 != 0)
+			{
+				bool hurt = true
+				if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty
+					hurt = Spike_Rebound()
+
+				if (hurt)
+					DamageCharacter()
+			}
+			return
+		}
+	}
+
+	objA1.position.x.u16 = objA0.position.x.u16
+	objA1.position.y.u16 = objA0.position.y.u16 - 0x0c
+
+	if (s8[A0 + 0x2c] < 0)
+	{
+		push(A3)
+		push(A2)
+		push(A1)
+		push(D5)
+		fn00f8ea()
+		D5 = pop()
+		A1 = pop()
+		A2 = pop()
+		A3 = pop()
+
+		if (D1.s16 < 0)
+		{
+			objA1.position.y.u16 += D1.u16
+			if (D1.s16 <= -0x10)
+			{
+				u8[A3] = 0
+				objA0.flags2a &= ~bit
+				u8[A1 + 0x2e] = 0
+				u8[A1 + 0x2a] &= ~char.flag.ON_OBJECT
+				D0.s16 = (objA0.flags2a & 0x01) ? -0x800 : 0x800
+				objA1.velocity.x = D0.u16
+				u16[A1 + 0x1c] = D0.u16
+
+				playSound(SFX_SPINDASH_RELEASE)
+				return
+			}
+		}
+	}
+
+	D0.u16 = u16[A2] & CONTROL_ABC
+	if (D0.u16 != 0)
+	{
+		u8[A3] = 0
+		objA1.velocity.y = -0x680
+		u8[A1 + 0x2e] = 0
+		u8[A1 + 0x2a] |= char.flag.IN_AIR
+		u8[A1 + 0x40] = 0x01
+
+		playSound(SFX_JUMP)
+	}
+}
+
+// Crushers in LBZ
+//# address-hook(0x02927c) end(0x029332)
+function void Crusher.Update()
+{
+	if (global.xtrachar != 1)
+	{
+		base.Crusher.Update()
+		return
+	}
+
+	if (u8[A0 + 0x32] == 0)
+	{
+		D0.u16 = objA0.velocity.y
+		objA0.velocity.y += 0x80
+		D0.s32 = s32(D0.s16) << 8
+		objA0.countdown_callback += D0
+		D2.u16 = u16[A0 + 0x34]
+		if (D2.u16 >= u16[A0 + 0x38])
+		{
+			objA0.velocity.y = 0
+			u16[A0 + 0x34] = u16[A0 + 0x38]
+			u8[A0 + 0x32] = 0x01
+			if (objA0.render_flags & render_flag.VISIBLE)
+			{
+				playSound((global.zone == 0x02) ? 0x5f : 0x96)
+			}
+		}
+	}
+	else
+	{
+		D2.u16 = u16[A0 + 0x34]
+		if (D2.u16 != 0)
+		{
+			--D2.u16
+			u16[A0 + 0x34] = D2.u16
+		}
+		else
+		{
+			u8[A0 + 0x32] = 0
+		}
+	}
+
+	D0.u16 = u16[A0 + 0x30] + u16[A0 + 0x34]
+	objA0.position.y.u16 = D0.u16
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y
+	D3.u16 = D2.u16 + 1
+	D4.u16 = objA0.position.x.u16
+	fn01dc56()
+
+	D6 = (D6 << 16) + (D6 >> 16)
+	if (D6.u8 & 0x04)
+	{
+		A1 = 0xffffb000
+		bool hurt = true
+		if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty
+			MightySpikeCollision = 1
+			hurt = spikecheck()
+		if (hurt)
+			DamageCharacter()
+	}
+
+	if (D6.u8 & 0x08)
+	{
+		A1 = 0xffffb04a
+		DamageCharacter()
+	}
+
+	DrawOrUnloadObject()
+}
+
+// Spiky chained platforms in LRZ act 2
+//# address-hook(0x04a74a) end(0x04a7b4)
+function void fn04a74a()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn04a74a()
+		return
+	}
+
+	u16 backup_px = objA0.position.x.u16
+	fn04a7ba()
+
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y
+	D3.u16 = D2.u16 + 1
+	D4.u16 = backup_px
+	fn01dc56()
+
+	D6 = (D6 << 16) + (D6 >> 16)
+	if (D6.u8 & 0x04)
+	{
+		A1 = 0xffffb000
+		bool hurt = true
+		if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty
+			MightySpikeCollision = 1
+			hurt = spikecheck()
+		if (hurt)
+			DamageCharacter()
+	}
+	if (D6.u8 & 0x08)
+	{
+		A1 = 0xffffb04a
+		DamageCharacter()
+	}
+
+	if (objA0.render_flags & render_flag.VISIBLE)
+	{
+		if ((level.framecounter.low & 0x0f) == 0)
+		{
+			playSound(0x94)
+		}
+	}
+
+	D0.u16 = u16[A0 + 0x34]
+	DrawOrUnloadObjectByD0()
+}
+
+// Weird icicles
+global bool Flipped_Icicles
+//# address-hook(0x08b2a4) end(0x08b2d8)
+function void fn08b2a4()
+{
+	setupObjectAttributesFull(0x08b350)
+	if (objA0.subtype2c == 0)
+	{
+		base.fn08b2a4()
+		if (A2 == 0x08b364) // celing icicles
+			Flipped_Icicles = true
+		else // grounded icicles
+			Flipped_Icicles = false
+	}
+	else
+	{
+		base.fn08b2a4()
+	}
+}
+
+function u8 Mighty_checkForCustomSpikyObj()
+{
+	return base.Mighty_checkForCustomSpikyObj()
+}
+
+function bool Mighty_checkForSpikyObj()
+{
+	if (char.state != char.state.ROLLING && char.state != char.state.COWERING && char.state != char.state.SPINDASH)
+		return false
+
+	bool is_spiky
+	// Custom object interaction
+	if (Mighty_checkForCustomSpikyObj() == 1) // Light bounce
+		is_spiky = true
+	else if (Mighty_checkForCustomSpikyObj() == 2) // Uncurl with invincibility
+		Bounce_off = true
+	else if (Mighty_checkForCustomSpikyObj() == 3) // Hurt
+		return false
+	else // Base game objects
+	{
+		// Fire Snake segments, orbiting spike balls, turbine spikes
+		if (objA1.update_address == 0x08f8f0 || objA1.update_address == 0x43c88 || objA1.update_address == 0x08f95c || objA1.update_address == 0x43b96 || (objA1.update_address == 0x44592 && char.state != char.state.COWERING) || objA1.update_address == 0x44954 || objA1.update_address == 0x44916)
+		{
+			is_spiky = true
+		}
+		//boss spike balls, launched spike balls
+		else if (objA1.update_address == 0x79ac4 || objA1.update_address == 0x79b22 || objA1.update_address == 0x79b54)
+		{
+			Bounce_off = true
+		}
+		// ICZ icicles
+		else if (objA1.update_address == 0x08b330)
+		{
+			Bounce_off = true
+		}
+		// CNZ act 1 boss
+		else if (objA1.update_address == 0x06dbca)
+		{
+			is_spiky = true
+		}
+		// CNZ and LBZ act 2 boss spheres
+		else if (objA1.update_address == 0x06e82c || objA1.update_address == 0x073a92)
+		{
+			Bounce_off = true
+		}
+		// CNZ act 2 boss rotating spheres
+		else if (objA1.update_address == 0x06e95a)
+		{
+			is_spiky = true
+		}
+		// Twin Hammer's spiked spheres
+		else if (objA1.update_address == 0x0725ee || objA1.update_address == 0x0725f4)
+		{
+			Bounce_off = true
+		}
+		// LBZ2 ball surrounding boss
+		else if (objA1.update_address == 0x0733ca)
+		{
+			is_spiky = true
+		}
+		// LBZ Orbinaut
+		else if (objA1.update_address == 0x08c6b0)
+		{
+			if (u8[A0 + 0x0d] & 0x02)
+				return true
+			else
+				is_spiky = true
+		}
+		// ICZ Wall spike cluster
+		else if (objA1.update_address == 0x085140)
+		{
+			// Bounce_off = true
+			Do_not_flash = true
+			u8[A0 + 0x34] = 8 // needed to give Mighty enough invincibility 
+			if (objA0.position.x < objA1.position.x && objA1.flags2a & 0x01) // back side of left facing spikes
+			{
+				objA0.velocity.x = -0x300
+			}
+			else if (objA0.position.x > objA1.position.x && !(objA1.flags2a & 0x01)) // back side of right facing spikes
+			{
+				objA0.velocity.x = 0x300
+			}
+			else if (u8[A1 + 0x2a] & char.flag.FACING_LEFT) // Front Spikes facing left
+			{
+				objA0.velocity.x = 0x300
+			}
+			else // Front Spikes facing right
+			{
+				objA0.velocity.x = -0x300
+			}
+			objA0.velocity.y = (objA0.velocity.y < 0) ? 0x200 : -0x200
+
+			objA0.state = char.state.FALLING_PANIC
+			objA0.flags2a |= char.flag.IN_AIR// | char.flag.ROLLING)
+
+			MightyBounced = true
+			PlayspikebounceSFX()
+			return true
+		}
+		// LBZ Ribot iron sphere
+		else if (objA1.update_address == 0x08c370)
+		{
+			is_spiky = true
+		}
+		// MHZ Bug thing and act 2 spike chain
+		else if (objA1.update_address == 0x08de26 || objA1.update_address == 0x0557c8)
+		{
+			is_spiky = true
+		}
+		// MGZ act 1 boss drills
+		else if (objA1.update_address == 0x088804)
+		{
+			Bounce_off = true
+		}
+		// MGZ act 2 boss big drill or ICZ act 2 boss spike platform
+		else if (objA1.update_address == 0x06c9e8 || objA1.update_address == 0x0720d4)
+		{
+			Bounce_off = true
+		}
+		// MGZ act 2 Kncukles boss tiny spike chain
+		else if (objA1.update_address == 0x06cdb0 || objA1.update_address == 0x06cd80)
+		{
+			is_spiky = true
+		}
+		// DEZ Spike ball badnik ; spike spear thing
+		else if (objA1.update_address == 0x91ba8 || objA1.update_address == 0x91e72 || objA1.update_address == 0x91d52)
+		{
+			is_spiky = true
+		}
+		// SOZ Skorp spike, Caterkiller
+		else if (objA1.update_address == 0x08e744 || objA1.update_address == 0x08eb8e)
+		{
+			is_spiky = true
+		}
+		// HCZ Turbo Spiker Shell
+		else if (objA1.update_address == 0x087da4)
+		{
+			is_spiky = true
+		}
+		// FBZ and DEZ missles
+		else if (objA1.update_address == 0x03c8d4 || objA1.update_address == 0x04728a)
+		{
+			is_spiky = true
+		}
+		// FBZ Mine explosion 
+		else if (objA1.update_address == 0x03c9e4)
+		{
+			if (MightyWasDropin)
+				return true // Here so that when Mighty hammer drops ontro a mine, it doesn't bounce him around
+			else
+				is_spiky = true
+		}
+		// magnetic platform underside
+		else if (objA1.update_address == 0x03b450 || objA1.update_address == 0x03b3c0 || objA1.update_address == 0x03b3fa)
+		{
+			Bounce_off = true
+		}
+		// magnetic spiked balls ; rotating spike balls
+		else if (objA1.update_address == 0x03b1b2 || objA1.update_address == 0x03b1ea || objA1.update_address == 0x03b1c4 || objA1.update_address == 0x01b662 || objA1.update_address == 0x03b8c2)
+		{
+			is_spiky = true
+		}
+		// HCZ Pointdexter ; MGZ Bubbles; spiked balls
+		else if (objA1.update_address == 0x088282 || objA1.update_address == 0x08833c || objA1.update_address == 0x031580 || objA1.update_address == 0x0315d2 || objA1.update_address == 0x03159e || objA1.update_address == 0x0315ee)
+		{
+			is_spiky = true
+		}
+		// LRZ spike balls, LRZ swinging balls, Big Arms spike roof, LRZ act 2 spike roof
+		else if (u8[A1 + 0x28] == 0x8f || objA1.update_address == 0x0435e0 || objA1.update_address == 0x074c0c || objA1.update_address == 0x797fa)
+		{
+			// LRZ spike balls
+			if (char.state == char.state.COWERING && (u8[A1 + 0x28] == 0x8f || objA1.update_address == 0x0435e0))
+				return false
+			else if (u8[A1 + 0x28] == 0x8f && global.zone == 0x02)
+				is_spiky = true
+			else
+				Bounce_off = true
+		}
+		// FBZ Gapsule big spike spheres
+		else if (objA1.update_address == 0x06f3de && objA1.subtype2c == 0x0a)
+		{
+			if (char.state == char.state.COWERING)
+				return false
+			else
+				Bounce_off = true
+		}
+		// FBZ Second bozz spike hands
+		else if (objA1.update_address == 0x070948)
+		{
+			is_spiky = true
+		}
+		//DEZ Red eye balls and spike platforms
+		else if (objA1.update_address == 0x07e820 || objA1.update_address == 0x07e758)
+		{
+			is_spiky = true
+		}
+		// HCZ Big Shaker's rockets
+		else if (objA1.update_address == 0x06a2ba)
+		{
+			is_spiky = true
+		}
+		// Spiky logs in AIZ
+		else if (objA1.update_address == 0x02b8ee)
+		{
+			is_spiky = true
+		}
+		// Mecha Sonic's spikes
+		else if ( (objA1.update_address == 0x07bd4c && (objA1.base_state >= 0x32 && objA1.base_state <= 0x36)) || ((objA1.update_address == 0x07b288 && (objA1.base_state == 0x08 || objA1.base_state == 0x0a || objA1.base_state >= 0x16 && objA1.base_state <= 0x28)) || objA1.update_address == 0x07c9c8) && char.state != char.state.COWERING)
+		{
+			is_spiky = true
+		}
+		// LRZ falling spike while they're still on the ceiling
+		else if (objA1.update_address == 0x042898)
+		{
+			Bounce_off = true
+		}
+		// Big Icedus ice blocks
+		else if (objA1.update_address == 0x0714b8)
+		{
+			Bounce_off = true
+		}
+		// Inflatable eggmen in SSZ
+		else if (objA1.update_address == 0x07ad8a)
+		{
+			Bounce_off = true
+		}
+		// Big Icicles in ICZ
+		else if (objA1.update_address == 0x08b1ae || objA1.update_address == 0x08b1d4 || objA1.update_address == 0x08b1fa)
+		{
+			Bounce_off = true
+		}
+	}
+
+	if (Bounce_off)
+	{
+		if (objA1.update_address == 0x0478e2)
+			return false
+
+		char.spindash = 0
+
+		bool ICZ_Roof_Icicles = (objA1.update_address == 0x08b330 && Flipped_Icicles)
+		objA0.velocity.y = (ICZ_Roof_Icicles) ? 0x200 : -0x400
+
+		if (ICZ_Roof_Icicles) // The some of the icicles in ICZ are special cases
+		{
+			objA0.velocity.x = (char.flags & char.flag.FACING_LEFT) ? -0x300 : 0x300
+		}
+		else
+		{
+			objA0.velocity.x = (char.flags & char.flag.FACING_LEFT) ? 0x300 : -0x300
+		}
+
+		objA0.state = char.state.FALLING_PANIC
+		objA0.flags2a |= char.flag.IN_AIR// | char.flag.ROLLING)
+
+		MightyBounced = true
+		if (ICZ_Roof_Icicles || objA1.update_address == 0x042898 || objA1.update_address == 0x0714b8 || objA1.update_address == 0x0725ee || objA1.update_address == 0x0725f4)
+		{
+			Do_not_flash = true
+			u8[A0 + 0x34] = (objA1.update_address == 0x0714b8 || objA1.update_address == 0x0725ee || objA1.update_address == 0x0725f4) ? 55 : 5 // shorter post hit invincibility so that Mighty doesn't accidentally pierce his brain
+		}
+		else
+		{
+			u8[A0 + 0x34] = 120 // post hit invincibility
+		}
+		PlayspikebounceSFX()
+		return true
+	}
+	
+	if (is_spiky)
+	{
+		if (obj_to_ignore != A1)
+		{
+			if (obj_to_ignore_cooldown > 15 && (objA1.update_address == 0x06cdb0 || objA1.update_address == 0x08c6b0 || objA1.update_address == 0x06cd80 || objA1.update_address == 0x43c88))// This is here so that Mighty doesn't get stuck in spike chains
+				return true
+			is_spikyfunc()
+		}
+		return true
+	}
+	return false
+}
+
+function void is_spikyfunc()
+{
+	if (char.state == char.state.SPINDASH)
+	{
+		char.hitbox_extends.x = 7
+		char.hitbox_extends.y = 14
+		char.state = char.state.ROLLING
+		char.flags |= char.flag.ROLLING
+		char.spindash = 0
+	}																						  // during Knuckles' act 2 boss in MGZ
+	obj_to_ignore_cooldown = 30
+	obj_to_ignore = A1
+
+	char.groundspeed = 2 * clamp(abs(char.groundspeed), 200, 400)
+	
+	char.velocity.x = 2 * clamp(abs(char.velocity.x), 200, 400)
+	
+	char.velocity.y = clamp(char.velocity.y, -800, 600)
+	
+	if (objA1.position.x > char.position.x)
+	{
+		char.groundspeed = -char.groundspeed
+		char.velocity.x = -char.velocity.x
+	}
+	
+	char.velocity.y = -char.velocity.y
+	if (u8[A0 + 0x2a] & char.flag.UNDERWATER)//much weaker underwater
+	{
+		objA0.velocity.x = objA0.velocity.x/2
+		objA0.velocity.y = objA0.velocity.y/2
+	}
+	
+	LightSpikeBounce()
+}
+
+
+// This gets called in yieldExecution in a different script
+function void objIgnoreUpdate()
+{
+	if (obj_to_ignore_cooldown)
+	{
+		--obj_to_ignore_cooldown
+		if (!obj_to_ignore_cooldown)
+		{
+			obj_to_ignore = 0
+		}
+	}
+}
+
+function bool Mighty_AffectCrouch()
+{
+	return base.Mighty_AffectCrouch()
+}
+
+//Bullet deflection
+//Mighty can deflect stuff when crouched, or whevener he is spinning
+//# address-hook(0x01021e) end(0x010288)
+function void Character.OnThreatCollision()
+{
+	//only check for mighty
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.Character.OnThreatCollision()
+		return
+	}
+	else
+	{
+		// Check for shield or invincibility
+		D0.u8 = char.bonus_effect & 0x73
+		if (D0.u8 != 0)
+		{
+			D0.u8 &= u8[A1 + 0x2b]
+			if (D0.u8 != 0)
+			{
+				D0 = 0xffffffff
+				return
+			}
+
+			if ((char.bonus_effect & char.bonus.ANY_SHIELD) == 0)
+			{
+				if ((char.bonus_effect & char.bonus.INVINCIBLE) == 0)
+				{
+					Character.OnThreatCollisionInner()
+				}
+				D0 = 0xffffffff
+				return
+			}
+		}
+		else
+		{
+			// Mighty deflects whenever he is spinning or crouching
+			bool canDeflect = (char.double_jump_state == 1) || (global.xtrachar == 1 && char.state == char.state.COWERING) || (global.xtrachar == 1 && char.state == char.state.ROLLING) || (global.xtrachar == 1 && char.state == char.state.SPINDASH)
+		
+			if (!canDeflect)
+			{
+				Character.OnThreatCollisionInner()
+				return
+			}
+		}
+
+		if ((objA1.flags2b & 0x08) == 0)
+		{
+			if ((char.bonus_effect & char.bonus.INVINCIBLE) == 0)
+			{
+				bool ShouldHurt = ( Mighty_AffectCrouch() || objA1.update_address == 0x071446 || (objA1.update_address == 0x07b288 && (objA1.base_state == 0x08 || objA1.base_state == 0x0a || objA1.base_state >= 0x16 && objA1.base_state <= 0x28)) || objA1.update_address == 0x07c9c8 || objA1.update_address == 0x44592 || (u8[A1 + 0x28] == 0x8f && global.zone != 0x02) || objA1.update_address == 0x0435e0 || (objA1.update_address == 0x06f3de && objA1.subtype2c == 0x0a))
+				// Damaging badniks
+				if (char.state == char.state.COWERING && !ShouldHurt)
+				{
+					if (obj_to_ignore != A1)
+					{
+						obj_to_ignore_cooldown = 30
+						obj_to_ignore = A1
+					
+						char.groundspeed = 300
+						
+						if (objA1.position.x > char.position.x)
+						{
+							char.groundspeed = -char.groundspeed
+							char.velocity.x = -char.velocity.x
+						}
+						
+						LightSpikeBounce()
+					}
+					return
+				}
+				Character.OnThreatCollisionInner()
+			}
+		}
+		else
+		{
+			deflectProjectile()
+		}
+		D0 = 0xffffffff
+	}
+}
+
+//# address-hook(0x01174a) end(0x0117d8)
+//# address-hook(0x014f74) end(0x015000)
+function void Character.CheckForStartRolling()
+{
+	if (obj_to_ignore_cooldown)
+	{
+		return
+	}
+	base.Character.CheckForStartRolling()
+}
+
+//PUSH ANIMATION -- Slightly faster for mighty
+//# address-hook(0x012a72) end(0x012aa2)
+function void updateSonicAnimationPushing()
+{
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.updateSonicAnimationPushing()
+		return
+	}
+	updateMightyAnimationPushing()
+}
+
+function void updateMightyAnimationPushing()
+{
+	--char.animation.timer
+	if (s8(char.animation.timer) < 0)
+	{
+		D2.s16 = 0x800 - abs(char.groundspeed)
+		D2.s16 = max(D2.s16, 0) >> 6
+		char.animation.timer = D2.u8
+
+		char.animation.timer >>= 1		// Faster animation 
+		A1 = 0x012b16
+		updateSonicAnimation_shared()
+	}
+}
+
+//------------
+//Spike bounce
+//------------
+//Mighty should bounce ONCE on spikes if he is rolling
+
+//# address-hook(0x024090) end(0x0240dc)
+function void Spikes.Update()
+{
+	if (global.xtrachar != 1)
+	{
+		base.Spikes.Update()
+		return
+	}
+
+	Mighty_Spikes.Update()
+}
+
+function void Mighty_Spikes.Update()
+{
+	fn0242b6()
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y
+	// if (!bouncy)
+	// 	D2 -= 0x08
+	D3.u16 = D2.u16 + 1
+	D4.u16 = objA0.position.x.u16
+	fn01dc56()
+
+	if (objA0.flags2a & 0x08)
+	{
+		A1 = 0xffffb000
+		bool hurt = true
+		if (u8[A1 + 0x38] == CHARACTER_SONIC && global.xtrachar == 1) //check for mighty
+		{
+			MightySpikeCollision = 0
+			hurt = spikecheck()
+		}
+		if (hurt)
+			DamageCharacter()
+	}
+
+	if (objA0.flags2a & 0x10)
+	{
+		A1 = 0xffffb04a
+		DamageCharacter()
+	}
+
+	D0.u16 = u16[A0 + 0x30]
+	DrawOrUnloadObjectByD0()
+}
+
+//# address-hook(0x0240e2) end(0x024138)
+function void fn0240e2()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn0240e2()
+		return
+	}
+
+	fn0242b6()
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y
+	D3.u16 = D2.u16 + 1
+	D4.u16 = objA0.position.x.u16
+	fn01dc56()
+
+	D6 = (D6 << 16) + (D6 >> 16)
+	D6.u16 &= 0x03
+	if (D6.u16 != 0)
+	{
+		D0.u8 = D6.u8 & 0x01
+		if (D0.u8 != 0)
+		{
+			A1 = 0xffffb000
+			bool hurt = true
+			if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty
+			{
+				MightySpikeCollision = 1
+				hurt = spikecheck()
+			}
+			if (hurt)
+				DamageCharacter()
+
+			objA0.flags2a &= ~0x20
+		}
+		D6.u8 &= 0x02
+		if (D6.u8 != 0)
+		{
+			A1 = 0xffffb04a
+			DamageCharacter()
+			objA0.flags2a &= ~0x40
+		}
+	}
+
+	D0.u16 = u16[A0 + 0x30]
+	DrawOrUnloadObjectByD0()
+}
+
+//# address-hook(0x02413e) end(0x024188)
+function void fn02413e()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn02413e()
+		return
+	}
+
+	fn0242b6()
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y
+	D3.u16 = D2.u16 + 1
+	D4.u16 = objA0.position.x.u16
+	fn01dc56()
+
+	D6 = (D6 << 16) + (D6 >> 16)
+	D6.u16 &= 0x0c
+	if (D6.u16 != 0)
+	{
+		D0.u8 = D6.u8 & 0x04
+		if (D0.u8 != 0)
+		{
+			A1 = 0xffffb000
+			bool hurt = true
+			if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty
+			{
+				MightySpikeCollision = 2
+				hurt = spikecheck()
+			}
+			if (hurt)
+				DamageCharacter()
+		}
+
+		D6.u8 &= 0x08
+		if (D6.u8 != 0)
+		{
+			A1 = 0xffffb04a
+			DamageCharacter()
+		}
+	}
+
+	D0.u16 = u16[A0 + 0x30]
+	DrawOrUnloadObjectByD0()
+}
+
+// Spikes under rocket platforms in LRZ
+//# address-hook(0x0431e0) end(0x043244)
+function void fn0431e0()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn0431e0()
+		return
+	}
+
+	D0.u16 = u16[A0 + 0x46] + u16[A0 + 0x34]
+	objA0.position.y.u16 = D0.u16
+
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y - (objA0.animation.sprite & 0x07)
+	D3.u16 = D2.u16 + 1
+	D4.u16 = objA0.position.x.u16
+	fn01dc56()
+
+	D6 = (D6 >> 16) & 0x0c
+	if (D6.u8 & 0x04)
+	{
+		A1 = 0xffffb000
+		bool hurt = true
+		if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty
+			MightySpikeCollision = 4
+			hurt = spikecheck()
+		if (hurt)
+			DamageCharacter()
+	}
+
+	if (D6.u8 & 0x08)
+	{
+		A1 = 0xffffb04a
+		DamageCharacter()
+	}
+
+	DrawOrUnloadObject()
+}
+
+global bool Do_not_flash
+function void Character.updateBonusEffects()
+{
+	if (global.xtrachar != 1 || char.character != CHARACTER_SONIC)
+	{
+		base.Character.updateBonusEffects()
+		return
+	}
+
+	if (Do_not_flash) // Wall spikes don't make Mighty fade in and out of existence.
+	{
+		bool doRender = true
+		if (char.invuln.countdown > 0)
+		{
+			// doRender = ((char.invuln.countdown & 0x04) != 0)
+			--char.invuln.countdown
+		}
+		if (doRender)
+		{
+			DrawObject()
+		}
+	}
+	else
+	{
+		base.Character.updateBonusEffects()
+	}
+}
+
+
+global bool Mighty_Spike_Bounce
+global bool bouncy = true
+//Mighty check for spikes
+//Custom function for spike immunity check
+function bool spikecheck()
+{
+	u8 input_state   = (char.character == CHARACTER_TAILS) ? control.tails.state   : control.player1.state
+	u16 X_velocity = 900
+	//Mighty gets no damage from spikes ONCE if rolling
+	if ( ((MightyWasRolling && u8[A1 + 0x22] >= 0x96 && u8[A1 + 0x22] <= 0x9a) || u8[A1 + 0x20] == char.state.SPINDASH) && !MightyBounced && tails.carrying == 0 && u8[A1 + 0x05] != 0x06)
+	{
+		MightyWasRolling = false
+		if (u8[A1 + 0x34] != 0 || (u8[A1 + 0x2b] & char.bonus.INVINCIBLE) != 0 || super.active)
+		{
+			MightyFrameCounter = 0
+			MightyBounced = false
+			return true // hurt
+		}
+		if (objA1.velocity.x != 0 && ((objA1.velocity.x > X_velocity && input_state & CONTROL_RIGHT) || (objA1.velocity.x < -(X_velocity) && input_state & CONTROL_LEFT)) && !MightyWasDropin && MightySpikeCollision == 0)
+		{
+			if (bouncy)
+			{
+			#if GAMEAPP >= 0x22121500 // Latest update
+				Input.setControllerRumble(-1, 0.5f, 14.0f, 250)
+			#endif
+				LightSpikeBounce()
+				objA1.velocity.y = (u8[A1 + 0x2a] & char.flag.UNDERWATER ? -0x180 : -0x380)
+				bouncy = false
+			}
+			objA1.state = char.state.ROLLING
+			objA1.flags2a |= (char.flag.IN_AIR | char.flag.ROLLING)
+			u8[A1 + 0x2a] |= 0x01
+			D3 = u32[A1 + 0x14]
+			D3 -= D0
+			u32[A1 + 0x14] = D3
+			A2 = A0	
+			A0 = A1
+			A0 = A2
+			objA1.hitbox_extends.y = 10
+			objA1.position.y.u16 += 8
+		}
+		else
+		{
+			u8[A1 + 0x3d] = 0 // get out of the spin dash state
+			//set to fall hurt + flag for custom animation + speed
+			//spikes are below
+			if (RollingIntoSpikes && MightySpikeCollision != 2)
+			{
+				objA1.velocity.y = -0x300
+				RollingIntoSpikes = false
+			}
+			else if (MightySpikeCollision == 1 || MightySpikeCollision == 4) //hit a ceiling spike, the underside of the rocket platforms from LRZ, or maybe the bottom of the SOZ spike pillar?
+			{
+				objA1.velocity.y = (objA1.velocity.y < 0) ? 0x200 : -0x200
+				// //objA1.velocity.y = 0x200
+				// if (objA1.velocity.y < 0)
+				// 	objA1.velocity.y = 0x200
+				// else
+				// 	objA1.velocity.y = -0x200
+			}
+			else if (MightySpikeCollision == 0)
+			{
+				objA1.velocity.y = -0x400
+			}
+			//also invert X direction and set a speed
+
+			// -0x300 -> bounce to the left
+			// 0x300 -> bounce to the right
+
+			// Makes it so that Mighty doesn't go into his panic
+			// animation after hammer dropping onto any spikes that
+			// aren't on the floor 
+			if (MightySpikeCollision != 0)
+				MightyWasDropin = false
+			
+			if (MightySpikeCollision == 1) // Spikes hanging on walls
+			{
+				Do_not_flash = true
+				u8[A1 + 0x34] = 2 // needed incase Mighty bumps into a row wall spikes
+				if (objA1.position.x < objA0.position.x && objA0.flags2a & 0x01) // back side of left facing spikes
+				{
+					objA1.velocity.x = -0x300
+				}
+				else if (objA1.position.x > objA0.position.x && !(objA0.flags2a & 0x01)) // back side of right facing spikes
+				{
+					objA1.velocity.x = 0x300
+				}
+				else if (char.flags & char.flag.FACING_LEFT) // Front Spikes facing left
+				{
+					objA1.velocity.x = 0x300
+				}
+				else // Front Spikes facing right
+				{
+					objA1.velocity.x = -0x300
+				}
+			}
+			else
+			{
+				if (Mighty_Spike_Bounce == 0) // Mania spike bounce
+					objA1.velocity.x = (u8[A1 + 0x2a] & 0x01) ? -0x300 : 0x300
+				else // Pre-4.0 spike bounce
+				{
+					if (objA1.velocity.x <= 0)
+						objA1.velocity.x = 0x300
+					else if (objA1.velocity.x>0)
+						objA1.velocity.x = -0x300
+				}
+			}
+
+			//underwater?
+			if (u8[A1 + 0x2a] & char.flag.UNDERWATER)//much weaker underwater
+			{
+				objA1.velocity.x = objA1.velocity.x/2
+				objA1.velocity.y = objA1.velocity.y/2
+			}
+			if (objA0.value42 == 1 && MightyWasDropin)
+			{
+				MightyWasDropin = false
+				objA0.state = 2
+				objA0.animation.timer = 3
+			}
+			if (MightySpikeCollision == 4)
+				u8[A1 + 0x34] = 120 // post hit invincibility
+			MightySpikeCollision = 0
+			if (u8[A1 + 0x28] & 0x01) // Check if Mighty is in the SOZ sandflow
+			{
+				objA1.state = char.state.ROLLING
+				u8[A1 + 0x2a] |= char.flag.ROLLING
+			}
+			else
+				objA1.state = char.state.FALLING_PANIC
+			objA1.flags2a |= char.flag.IN_AIR// | char.flag.ROLLING)
+			//u8[A1 + 0x2a] |= 0x01 <-- wrong
+			//D3 = u32[A1 + 0x14]
+			//D3 -= D0
+			//u32[A1 + 0x14] = D3
+			//A2 = A0	
+			//A0 = A1
+			//A0 = A2
+			MightyBounced = true
+			PlayspikebounceSFX()
+		}
+		return false // not hurt
+	}
+	else
+	{
+		MightyFrameCounter = 0
+		// MightyBounced = false
+		return true
+	}
+}
+
+//Generic Blocker Spikes
+//Only check for certain levels that have spikes with Generic Blocker element code
+//# address-hook(0x01f45e) end(0x01f4c2)
+function void fn01f45e()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn01f45e()
+		return
+	}
+
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y
+	D3.u16 = D2.u16 + 1
+	D4.u16 = objA0.position.x.u16
+	CheckCharacterOnClimbableObject()
+
+	if (objA0.flags2a & 0x08)
+	{
+		A1 = 0xffffb000
+		if (global.zone_act == 0x0500 || global.zone_act == 0x0100 || global.zone_act == 0x0101 || global.zone_act == 0x0400 || global.zone_act == 0x0401) //handle Generic Blocker spikes
+		{		
+			bool hurt = true
+			if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty
+			{					
+				MightySpikeCollision = 0				
+				hurt = spikecheck()
+			}
+			if (hurt)
+				BlockerElement.DoDamage()
+		}
+		else
+		{
+			BlockerElement.DoDamage()
+		}	
+	}
+	if (objA0.flags2a & 0x10)
+	{
+		A1 = 0xffffb04a
+		BlockerElement.DoDamage()
+	}
+
+	BlockerElement.checkForUnloadAndDebugRender(0xff80ffff)
+}
+
+// Object that is (flipped) GTGT
+//# address-hook(0x01f528) end(0x01f58a)
+function void fn01f528()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn01f528()
+		return
+	}
+
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y
+	D3.u16 = D2.u16 + 1
+	D4.u16 = objA0.position.x.u16
+	CheckCharacterOnClimbableObject()
+
+	D6 = (D6 << 16) + (D6 >> 16)
+	if (D6.u8 & 0x04)
+	{
+		A1 = 0xffffb000
+		if (global.zone_act != 0x0500)
+		{
+			BlockerElement.DoDamage()
+		}
+		else //handle ice cap spikes
+		{			
+			bool hurt = true
+			if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty
+			{
+				MightySpikeCollision = 2
+				hurt = spikecheck()
+			}
+			if (hurt)
+				BlockerElement.DoDamage()
+		}
+	}
+	if (D6.u8 & 0x08)
+	{
+		A1 = 0xffffb04a
+		BlockerElement.DoDamage()
+	}
+
+	BlockerElement.checkForUnloadAndDebugRender(0xff8080ff)
+}
+
+//ICE CAP CRYSTALS
+//# address-hook(0x08b4ec) end(0x08b526)
+function void fn08b4ec()
+{
+	//mighty can pass through with a stomp
+	//only check for mighty
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.fn08b4ec()
+		return
+	}
+	
+	D0 = u8[A0 + 0x29]
+	if (D0.u8 == 0)
+	{
+		Enemy.DrawOrUnload()
+		return
+	}
+
+	D0.u16 *= 2
+	A1 = 0xffff0000 + u16[0x08b52a + D0.s16]
+	// Also check for:
+	//  - Invulnerability frames
+	//  - And for the fire shield
+	// - And mighty drop skill
+	if (u8[A1 + 0x34] == 0 && (u8[A1 + 0x2b] & char.bonus.INVINCIBLE) == 0 && (u8[A1 + 0x2b] & char.bonus.SHIELD_FIRE) == 0 && (!(u8[A0 + 0x0d] & 0x02)))
+	{
+		A2 = A0
+		A0 = A1
+		Character.GettingHurt()
+		A0 = A2
+	}
+
+	spawnSimpleChildObjects(0x08b54a)
+	Object.TriggerUnloading()
+	playSound(0x80)
+	DrawObject()
+}
+
+//Sandopolis moving pillars with spikes
+//# address-hook(0x0411d8) end(0x04120a)
+//# translated(0x04121e) end(0x04126c)
+function void fn0411d8()
+{
+	if (global.xtrachar != 1)
+	{
+		base.fn0411d8()
+		return
+	}
+
+	u16 backup_px = objA0.position.x.u16
+	A1 = u32[A0 + 0x30]
+	call A1
+
+	D4.u16 = backup_px
+	D1 = objA0.box_size.x + 11
+	D2 = objA0.box_size.y
+	D3.u16 = D2.u16 + 1
+	fn01dc56()
+
+	D6 = (D6 << 16) + (D6 >> 16)
+	D6.u8 &= u8[A0 + 0x34]
+	if (D6.u8 != 0)
+	{
+		if (objA0.animation.sprite == 1)
+		{
+			if (D6.u8 & 0x10)
+			{
+				A1 = 0xffffb000
+				bool hurt = true
+				if (u8[A1 + 0x38] == CHARACTER_SONIC) //check for mighty
+					MightySpikeCollision = 0
+					hurt = spikecheck()					
+				if (hurt)
+					DamageCharacter()
+			}
+
+			if (D6.u8 & 0x20)
+			{
+				A1 = 0xffffb04a
+				DamageCharacter()
+			}
+		}
+		else
+		{
+			if (D6.u8 & 0x04)
+			{
+				A1 = 0xffffb000
+				bool hurt = true
+				if (u8[A1 + 0x38] == CHARACTER_SONIC && global.xtrachar == 1) //check for mighty
+					MightySpikeCollision = 4
+					hurt = spikecheck()
+				if (hurt)
+					DamageCharacter()
+			}
+
+			if (D6.u8 & 0x08)
+			{
+				A1 = 0xffffb04a
+				DamageCharacter()
+			}
+		}
+	}
+
+	D0.u16 = u16[A0 + 0x44]
+	DrawOrUnloadObjectByD0()
+}
+
+
+function u8 Wall_Direction()
+{
+	return (char.velocity.x > 0) ? 1 : 2
+}
+
+
+// MARK MIGHTY IS HITTING A WALL
+//# address-hook(0x011eec) end(0x011fd4)
+//# translated(0x012012) end(0x01209c)
+//# translated(0x01209e) end(0x012100)
+//# translated(0x012102) end(0x012170)
+//# address-hook(0x0153c2) end(0x01560a)
+function void Character.CheckCollision()
+{
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.Character.CheckCollision()
+		return
+	}
+	
+	if (!(u8[A0 + 0x0d] & 0x40) && MightyXCollision != char.position.x.u16)
+	{
+		MightyWallCollision = 0
+	}
+	bool someFlag = u8[0xfffff7c8]
+
+	u32[0xfffff796] = (char.layer_flags1 == 0x0c) ? u32[0xfffff7b4] : u32[0xfffff7b8]
+
+	D5.u8 = char.layer_flags2
+	D0.u16 = lookupAngleByVector(char.velocity.x, char.velocity.y)
+	D0.u8 = (D0.u8 - 0x20) & 0xc0
+	if (D0.u8 == 0)
+	{
+		fn00fd9a()
+		if (D1.s16 < 0)
+		{
+			MightyWallCollision = Wall_Direction()
+			MightyCollisionTimer = 10
+			char.position.x.u16 -= D1.u16
+			char.velocity.x = 0
+			MightyXCollision = char.position.x.u16
+		}
+
+		fn00fa7a()
+		if (D1.s16 < 0)
+		{
+			MightyWallCollision = Wall_Direction()
+			MightyCollisionTimer = 10
+			char.position.x.u16 += D1.u16
+			char.velocity.x = 0
+			MightyXCollision = char.position.x.u16
+		}
+
+		Character.CheckFloorCollision()
+		if (D1.s16 < 0)
+		{
+			D2.u8 = (char.velocity.y >> 8) + 8
+			D2.s8 = -D2.s8
+			if (D0.s8 < D2.s8 && D1.s8 < D2.s8)
+				return
+
+			char.rotation = D3.u8
+			char.position.y.u16 += global.inv_gravity ? -D1.s16 : D1.s16
+
+			if (((D3.u8 + 0x20) & 0x40) == 0)
+			{
+				if (((D3.u8 + 0x10) & 0x20) == 0)
+				{
+					char.velocity.y = 0
+					char.groundspeed = char.velocity.x
+					Character.LandingOnGround()
+					return
+				}
+				else
+				{
+					char.velocity.y >>= 1
+				}
+			}
+			else
+			{
+				MightyWallCollision = Wall_Direction()
+				MightyCollisionTimer = 10
+
+				char.velocity.x = 0
+				char.velocity.y = min(char.velocity.y, 0x0fc0)
+				
+				MightyXCollision = char.position.x.u16
+			}
+
+			Character.LandingOnGround()
+			char.groundspeed = char.velocity.y
+			if (D3.s8 < 0)
+			{
+				char.groundspeed = -char.groundspeed
+			}
+		}
+	}
+	else if (D0.u8 == 0x40)
+	{
+		fn00fd9a()
+		if (D1.s16 < 0)
+		{
+			MightyWallCollision = Wall_Direction()
+			MightyCollisionTimer = 10
+			char.position.x.u16 -= D1.u16
+			char.velocity.x = 0
+			char.groundspeed = char.velocity.y
+			
+			MightyXCollision = char.position.x.u16
+		}
+
+		Character.CheckCeilingCollision()
+		if (D1.s16 < 0)
+		{
+			D1.s16 = -D1.s16
+			if (D1.s16 < 0x14)
+			{
+				if (global.inv_gravity)
+					D1.s16 = -D1.s16
+
+				char.position.y.u16 += D1.u16
+				char.velocity.y = max(char.velocity.y, 0)
+			}
+			else
+			{
+				fn00fa7a()
+				if (D1.s16 < 0)
+				{
+					MightyWallCollision = Wall_Direction()
+					MightyCollisionTimer = 10
+					char.position.x.u16 += D1.u16
+					char.velocity.x = 0
+					
+					MightyXCollision = char.position.x.u16
+				}
+			}
+		}
+		else
+		{
+			if (someFlag || char.velocity.y >= 0)
+			{
+				Character.CheckFloorCollision()
+				if (D1.s16 < 0)
+				{
+					char.position.y.u16 += global.inv_gravity ? -D1.s16 : D1.s16
+					char.rotation = D3.u8
+					char.velocity.y = 0
+					char.groundspeed = char.velocity.x
+					Character.LandingOnGround()
+				}
+			}
+		}
+	}
+	else if (D0.u8 == 0x80)
+	{
+		fn00fd9a()
+		if (D1.s16 < 0)
+		{
+			MightyWallCollision = Wall_Direction()
+			MightyCollisionTimer = 10
+			char.position.x.u16 -= D1.u16
+			char.velocity.x = 0
+			
+			MightyXCollision = char.position.x.u16
+		}
+
+		fn00fa7a()
+		if (D1.s16 < 0)
+		{
+			MightyWallCollision = Wall_Direction()
+			MightyCollisionTimer = 10
+			char.position.x.u16 += D1.u16
+			char.velocity.x = 0
+			
+			MightyXCollision = char.position.x.u16
+		}
+
+		Character.CheckCeilingCollision()
+		if (D1.s16 < 0)
+		{
+			if (global.inv_gravity)
+				D1.s16 = -D1.s16
+
+			char.position.y.u16 -= D1.u16
+			if (((D3.u8 + 0x20) & 0x40) == 0)
+			{
+				char.velocity.y = 0
+			}
+			else
+			{
+				char.rotation = D3.u8
+				Character.LandingOnGround()
+
+				char.groundspeed = char.velocity.y
+				if (D3.s8 < 0)
+					char.groundspeed = -char.groundspeed
+			}
+		}
+	}
+	else 	// (D0.u8 == 0xc0)
+	{
+		fn00fa7a()
+		if (D1.s16 < 0)
+		{
+			MightyWallCollision = Wall_Direction()			
+			MightyCollisionTimer = 10
+			char.position.x.u16 += D1.s16
+			char.velocity.x = 0
+			char.groundspeed = char.velocity.y
+			
+			MightyXCollision = char.position.x.u16
+		}
+
+		Character.CheckCeilingCollision()
+		if (D1.s16 < 0)
+		{
+			char.position.y.u16 -= global.inv_gravity ? -D1.s16 : D1.s16
+			char.velocity.y = max(char.velocity.y, 0)
+		}
+		else
+		{
+			if (someFlag || char.velocity.y >= 0)
+			{
+				Character.CheckFloorCollision()
+				if (D1.s16 < 0)
+				{
+					char.position.y.u16 += global.inv_gravity ? -D1.s16 : D1.s16
+					char.rotation = D3.u8
+					char.velocity.y = 0
+					char.groundspeed = char.velocity.x
+					Character.LandingOnGround()
+				}
+			}
+		}
+	}
+}
+
+// This is so that other Sonic mods don't interfere with Mighty
+//# address-hook(0x010fe0) end(0x011034)
+function void Character.UpdateSonicRollingOnGround()
+{
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.Character.UpdateSonicRollingOnGround()
+		return
+	}
+	Character.UpdateMightyRollingOnGround()
+}
+
+function void Character.UpdateMightyRollingOnGround()
+{
+	MightyWasRolling = true
+
+	RollingIntoSpikes = true
+	
+	if (char.character == CHARACTER_TAILS && tails.carrying)
+	{
+		A1 = 0xffffb000
+		u8[A1 + 0x2e] = 0
+		objA1.flags2a |= char.flag.IN_AIR
+		tails.carrying = 0
+		tails.catch_timeout = 0
+	}
+
+	if (char.spindash == 0)
+	{
+		if (Character.CheckStartJump())
+			return
+	}
+
+	Character.UpdateRollingSlopeEffect()
+	updateCharacterControlOnGround()
+
+	Character.sharedUpdateOnGround()
+}
+
+//# address-hook(0x012172) end(0x012178)
+//# address-hook(0x01560c) end(0x01569a)
+function void Character.LandingOnGround()
+{
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.Character.LandingOnGround()
+		return
+	}
+	Fall_Anim_Corkscrew = 0
+
+	MightyWasDropin = false
+
+	RollingIntoSpikes = false
+
+	if (competition_mode.active && competition.xtrachar == 0x01)
+		hammercontrol = false
+
+	if (char.state == char.state.ROLLING || (char.flags & char.flag.ROLLING))
+	{
+		MightyWasRolling = true
+	}
+	else
+	{
+		MightyWasRolling = false
+	}
+
+	if (char.spindash == 0)
+	{
+	#if STANDALONE
+		// Check if transforming, otherwise character gets stuck if transforming right when touching the ground
+		bool transforming = (char.character == CHARACTER_TAILS) ? (char.state == char.state.TAILS_TRANSFORM) : (char.state == char.state.TRANSFORMING)
+		if (transforming)
+		{
+			char.flags &= ~char.flag.ROLLING	// Needed so that "Character.LandingOnGroundStandUp()" does not change the state either
+		}
+		else
+	#endif
+		{
+			char.state = char.state.RUNNING
+		}
+
+		Character.LandingOnGroundStandUp()
+	}
+
+	Character.LandingOnGroundResetState()
+}
+
+//# address-hook(0x01217e) end(0x012230)
+//# address-hook(0x015618)
+//# address-hook(0x017b24) end(0x017bb4)
+function void Character.LandingOnGroundNoSpindash()
+{
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.Character.LandingOnGroundNoSpindash()
+		return
+	}
+	FreeFall = 0
+	MightyWasDropin = false
+
+	RollingIntoSpikes = false
+
+	char.state = char.state.RUNNING
+
+	MightyWasRolling = (char.state == char.state.ROLLING || (char.flags & char.flag.ROLLING)) ? true : false
+
+	base.Character.LandingOnGroundNoSpindash()
+}
+
+//Fix for balloons popping on a wall latching mighty (EG: DA GARDEN)
+//# address-hook(0x0317ae) end(0x03181c)
+function void fn0317ae()
+{
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	{
+		base.fn0317ae()
+		return
+	}
+	objA1.velocity.y = -0x700
+	objA1.flags2a |= char.flag.IN_AIR
+	objA1.flags2a &= ~(char.flag.CONTROL_LOCK | char.flag.PUSHING)
+	u8[A1 + 0x2e] = 0
+
+#if STANDALONE
+	// Check for active dropdash
+	if (u8[A1 + 0x38] != CHARACTER_SONIC || u8[A1 + 0x20] != char.state.SONIC_DROPDASH)
+#endif
+	{
+		// Reset the "char.jumping" to make the character bounce off ignoring the velocity-y limit
+		u8[A1 + 0x40] = 0
+	}
+
+	objA0.state |= 0x01
+	if (s8[A0 + 0x2c] < 0)
+	{
+		objA1.velocity.y = -0x380
+		if (level.water_present != 0 && u8[A0 + 0x34] == 0)
+		{
+			A2 = 0x03185a
+			fn03181e()
+			fn03181e()
+			fn03181e()
+			fn03181e()
+			objA1.position.x.u16 = objA0.position.x.u16
+			objA1.position.y.u16 = objA0.position.y.u16
+		}
+	}
+
+	if (u8[A0 + 0x34] == 0)
+	{
+		playSound(0x77)
+		u8[A0 + 0x34] = 0x01
+		
+		MightyFrameCounter = 0
+		u8[A1 + 0x0b] = 0 // MightyWallCollision
+		u8[A1 + 0x0f] = 0 // MightyCollisionTimer
+		u8[A1 + 0x0d] &= ~0x40
+	}
+}
