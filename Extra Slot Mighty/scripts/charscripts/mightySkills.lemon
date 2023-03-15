@@ -740,7 +740,7 @@ function void Mighty.LandingOnGroundResetState()
 					}
 					else
 					{
-						char.velocity.y -= (char.flags & char.flag.UNDERWATER) ? (Held_Bounce_Vel / 2) : Held_Bounce_Vel
+						char.velocity.y -= (char.flags & char.flag.UNDERWATER) ? (Held_Bounce_Vel / 2) : (competition_mode.active) ? (Held_Bounce_Vel - 0x90) : Held_Bounce_Vel
 					}
 				}
 				else
