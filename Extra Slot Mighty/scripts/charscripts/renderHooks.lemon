@@ -62,7 +62,14 @@ function void ExtraChar.DataSelect.drawCharacterSprite(s16 px, s16 py, u16 rende
 				if (Renderer.hasCustomSprite("dataSel_character_tails"))
 					Renderer.drawCustomSprite("dataSel_character_tails", px+7, py-2, 0x60, SPRITE_FLAG_PRIO | SPRITE_FLAG_FLIP_X, renderQueue)
 				else
-					Standalone.drawCharacterSpriteDirect(CHARACTER_TAILS, px+6, py-18, 0xa6, 0x00 | SPRITE_FLAG_FLIP_X, 0x60, renderQueue)
+				{
+			#if GAMEAPP <= 0x22121500
+					Standalone.drawCharacterSpriteDirect(CHARACTER_TAILS, px+6, py-18, 0xa6, SPRITE_FLAG_PRIO | SPRITE_FLAG_FLIP_X, 0x60, renderQueue)
+			#else
+					Renderer.drawCustomSprite(getCharacterSelectSpriteKey(CHARACTER_TAILS), px+6, py-18, 0x60, SPRITE_FLAG_PRIO | SPRITE_FLAG_FLIP_X, renderQueue)
+			#endif
+				}
+
 			}
 		}
 		else
