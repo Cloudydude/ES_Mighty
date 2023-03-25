@@ -3,7 +3,6 @@ global u8 Hammerdrop_Button
 global u8 Wall_Jump_Button
 global bool Mighty_Custom_Mappings
 global bool MightyWallJump
-//global u8 Hori_Momen
 
 //mighty doesn't peelout. Other charachers should be able to though!
 function bool Character.updateSuperPeelout()
@@ -324,7 +323,7 @@ function void Character.updateJumpMoves()
 									return //Don't check anything else, he's on the wall!
 								}
 
-								if (char.state == char.state.ROLLING && !hammercontrol && ((Mighty_Custom_Mappings == 0 && (input_pressed & Hammerdrop_Button)) || Mighty_Custom_Mappings == 1))
+								if (!(input_state & CONTROL_UP) && char.state == char.state.ROLLING && !hammercontrol && ((Mighty_Custom_Mappings == 0 && (input_pressed & Hammerdrop_Button)) || Mighty_Custom_Mappings))
 								{
 									if (super.active & 0x80) //&& (control.player1.state & CONTROL_DOWN))
 									// Hyper, DOWN PRESSED
@@ -663,6 +662,7 @@ global u16 Held_Bounce_Vel
 
 define bool hammercontrol = u8[0xffffF63C + ((A0 == 0xffffb000) ? 0 : 0x01)]
 
+#if GAMEAPP <= 0x22051500
 function void fn030cf8()
 {
 	base.fn030cf8()
@@ -671,6 +671,7 @@ function void fn030cf8()
 	if (u8[A1 + 0x2e] & 0x81)
 		objA1.flags2a &= ~char.flag.IN_AIR
 }
+#endif
 
 function void Mighty.LandingOnGroundResetState()
 {
