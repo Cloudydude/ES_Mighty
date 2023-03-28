@@ -59,7 +59,7 @@ function u64 ExtraChar.getIconSpriteKey_char1(u8 type)
 {
 	if (type == 0x01)
 		return (System.getGlobalVariableValueByName("Mighty_hud_type") == 2) ? "KC_mighty_monitor" : (System.getGlobalVariableValueByName("Mighty_hud_type") == 1) ? "Mania_monitor_M" : (System.getGlobalVariableValueByName("Mighty_hud_type") == 3) ? "Megamix_mighty_monitor" : (Mighty_Sprite_type == 0) ? "monitor_icon" : "monitor_icon_S3"
-	else if (type == 0x02 && System.getGlobalVariableValueByName("EggmanBlue.disableMonitorReplacement") != 1)
+	else if (type == 0x02 && Renderer.hasCustomSprite("eggman-lrz-blue-12") && System.getGlobalVariableValueByName("EggmanBlue.disableMonitorReplacement") != 1)
 		return "monitor_icon_eggman"
 	else if (type == 0x04)
 	{
