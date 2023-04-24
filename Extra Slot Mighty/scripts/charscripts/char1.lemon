@@ -5,7 +5,6 @@ include gameplaychanges
 include mightySkills
 include smashThrough
 include objectInteractions
-include mightyFallingsprites
 include mighty_Surfboard_intro
 
 global u8 Mighty_Sprite_type // referenced in mightyRendering and renderHooks

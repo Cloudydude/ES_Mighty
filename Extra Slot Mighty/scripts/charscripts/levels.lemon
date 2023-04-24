@@ -60,10 +60,15 @@ function u32 ExtraChar.LevelManager.loadRawLevelData(string format, u16 zoneAndA
 
 function u32 Game.getSetting(u32 settingId)
 {
-	if (global.xtrachar == 0x01 && (ExtraChar.LevelManager.EnableCustomLevels(0x01)))
+	if (global.xtrachar == 0x01)
 	{
-		if (settingId == SETTING_LEVELLAYOUTS && global.zone == 0x00)
-			return 2
+		if (ExtraChar.LevelManager.EnableCustomLevels(0x01))
+		{
+			if (settingId == SETTING_LEVELLAYOUTS && global.zone == 0x00)
+				return 2
+		}
+		else if (settingId == SETTING_SUPER_PEELOUT)
+			return 0
 	}
 	
 	return base.Game.getSetting(settingId)

@@ -24,9 +24,16 @@ function void yieldExecution()
     base.yieldExecution()
 }
 
+function bool ItBeMighty()
+{
+	return ((global.xtrachar == 1 && u8[A1 + 0x38] == CHARACTER_SONIC))
+}
+
 function void checkStayDroppingDown()
 {
-	if (GfxMightyDroppingDown) || (u8[0xffffb000 + 0x0d] & 0x02)
+	if (!ItBeMighty())
+		return
+	else if (GfxMightyDroppingDown) || (u8[0xffffb000 + 0x0d] & 0x02)
 	{
 		objA1.velocity.y = ESM.yVelocityLastFrame		
 		u8[A1 + 0x0d] |= 0x02           // Mighty dropdown flag

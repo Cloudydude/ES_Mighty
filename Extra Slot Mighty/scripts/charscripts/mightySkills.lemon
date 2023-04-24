@@ -19,12 +19,6 @@ function void Character.Initialization.shared(u8 character)
 {
 	if (global.xtrachar == 1 && character == CHARACTER_SONIC)
 	{
-		if (Mighty_Uncurled_Fall == 1 && global.zone_act == 0x0600) // Fix for LBZ
-			Should_fall_anim = false
-		FreeFall = 0
-		SuperFall = false
-		Force_Fall = false
-		Mighty_ShowFall = false
 		MightyDustControl = 0
 	}
 	if (global.game_mode == 0x8c)
@@ -44,6 +38,12 @@ function void UpdateSonicAnimation()
 	}
 	else
 	{
+		if (char.state == 0x36)
+		{
+			base.UpdateSonicAnimation()
+			return
+		}
+
 		if (char.state != char.state.former)
 		{
 			char.state.former = char.state
@@ -83,7 +83,6 @@ function void UpdateSonicAnimation()
 		}
 	}
 }
-global bool ShouldUncurl
 
 //# address-hook(0x010f2c) end(0x010f82)
 function void Character.UpdateSonicUprightOnGround()
@@ -91,12 +90,6 @@ function void Character.UpdateSonicUprightOnGround()
 	if (global.xtrachar == 1 && A0 == 0xffffb000)
 	{
 		hammercontrol = false
-		FallingFix = false
-		ShouldUncurl = false
-		Fall_Anim_Corkscrew = 0
-		FreeFall = 0
-		Should_fall_anim = false
-		SuperFall = false
 		Bounce_off = false
 		MightyWasRolling = false
 		MightyBounced = false
@@ -470,28 +463,60 @@ function void Character.updateJumpMoves()
 							else if (!IsFacingLeft && (control.player1.state & CONTROL_LEFT) && MightyWallCollision == 1)
 								char.velocity.x -= acceleration	
 						}
+
+						// else if (control.player1.state & CONTROL_DOWN)
+						// {
+						// 	char.velocity.y += acceleration
+						// 	if (IsFacingLeft && (control.player1.state & CONTROL_RIGHT) && MightyWallCollision == 2)
+						// 	{
+						// 		char.velocity.x += acceleration	
+						// 	}
+						// 	else if (!IsFacingLeft && (control.player1.state & CONTROL_LEFT) && MightyWallCollision == 1)
+						// 		char.velocity.x -= acceleration	
+						// }
 						else if (control.player1.state & CONTROL_DOWN)
 						{
-							char.velocity.y += acceleration
-							if (IsFacingLeft && (control.player1.state & CONTROL_RIGHT) && MightyWallCollision == 2)
+							// char.velocity.y += acceleration
+							if (IsFacingLeft && MightyWallCollision == 2)
 							{
-								char.velocity.x += acceleration	
+								if (control.player1.state & CONTROL_LEFT)
+								{
+									char.velocity.y -= acceleration
+									char.velocity.x += acceleration
+								}
+								else
+									char.velocity.y += acceleration
+								if (control.player1.state & CONTROL_RIGHT)
+									char.velocity.x += acceleration	
 							}
-							else if (!IsFacingLeft && (control.player1.state & CONTROL_LEFT) && MightyWallCollision == 1)
-								char.velocity.x -= acceleration	
+							else if (!IsFacingLeft && MightyWallCollision == 1) // right wall
+							{
+								if (control.player1.state & CONTROL_RIGHT)
+								{
+									char.velocity.y -= acceleration
+									char.velocity.x -= acceleration	
+								}
+								else
+									char.velocity.y += acceleration
+								if (control.player1.state & CONTROL_LEFT)
+									char.velocity.x -= acceleration	
+							}
 						}
 						else
 						{
 							u16 horizontal_acceleration = (char.flags & char.flag.UNDERWATER) ? 0x540 : (super.active) ? 0xC00 : 0x9C0			
 							// acceleration = acceleration
-							char.velocity.y -= ((char.flags & char.flag.UNDERWATER) ? (0x380/2) : 0x380)
+							bool whichway = ((!IsFacingLeft && (control.player1.state & CONTROL_RIGHT) && MightyWallCollision == 1) || (IsFacingLeft && (control.player1.state & CONTROL_LEFT) && MightyWallCollision == 2))
+							u16 regular_Y_force = ((char.flags & char.flag.UNDERWATER) ? (0x380/2) : 0x380)
+							char.velocity.y -= (whichway) ? acceleration : regular_Y_force
+
 							if (MightyWallCollision == 1)
 							{//right wall						
-								char.velocity.x -= horizontal_acceleration					
+								char.velocity.x -= ((!IsFacingLeft && (control.player1.state & CONTROL_RIGHT) && MightyWallCollision == 1)) ? acceleration : horizontal_acceleration					
 							}
 							else
 							{//left wall
-								char.velocity.x += horizontal_acceleration				
+								char.velocity.x += ((IsFacingLeft && (control.player1.state & CONTROL_LEFT) && MightyWallCollision == 2)) ? acceleration : horizontal_acceleration				
 							}																
 						}
 						MightyFrameCounter = 0
@@ -617,7 +642,7 @@ function void Character.UpdateMightyRollingInAir()
 		}
 		else // bottom raycast
 		{//Incase Mighty is pushed off of a wall by a moving object (like the HCZ pillars)
-			D2.u16 = char.position.y.u16 + (global.inv_gravity ? -11 : 11)
+			D2.u16 = char.position.y.u16 + (global.inv_gravity ? -7 : 7)
 			fn016f4e()
 			if (D1.s16 >= 4)
 				ForceDetatchfromWall()
@@ -637,7 +662,7 @@ function void Character.UpdateMightyRollingInAir()
 	RollingIntoSpikes = false
 
 	//V1.11 Any air-unroll bounce fix. If not rolling in the air, for ANY reason (spring, air current...) you must count as bounced
-	if (char.state != char.state.ROLLING && !MightyBounced && (Mighty_Level_Transition_Fall || !ShouldUncurl) && !FallingFix)
+	if (char.state != char.state.ROLLING && !MightyBounced)
 		MightyBounced = true
 	
 	Character.UpdateControlInAir()
@@ -662,7 +687,7 @@ global u16 Held_Bounce_Vel
 
 define bool hammercontrol = u8[0xffffF63C + ((A0 == 0xffffb000) ? 0 : 0x01)]
 
-#if GAMEAPP <= 0x22051500
+#if GAMEAPP <= 0x23032500
 function void fn030cf8()
 {
 	base.fn030cf8()
@@ -675,12 +700,9 @@ function void fn030cf8()
 
 function void Mighty.LandingOnGroundResetState()
 {
-	FallingFix = false
-	ShouldUncurl = false
 	Do_not_flash = false
 	if !(((u32[char.object_standing_on + 0xffff0000] == 0x024090) || (u32[char.object_standing_on + 0xffff0000] == 0x022ef4) || (u32[char.object_standing_on + 0xffff0000] == 0x03cb66)) && (char.flags & char.flag.ON_OBJECT))
 		bouncy = true
-	FreeFall = 0 // No more falling
 	char.flags &= ~char.flag.IN_AIR
 	char.flags &= ~char.flag.PUSHING
 	char.flags &= ~char.flag.CONTROL_LOCK
@@ -716,7 +738,7 @@ function void Mighty.LandingOnGroundResetState()
 
 			bool Lava_Electric_Check = ((u8[A1 + 0x2b] & char.bonus.SHIELD_FIRE) || (u8[A1 + 0x2b] & char.bonus.SHIELD_LIGHTNING) || u8[A1 + 0x34] != 0 || (u8[A1 + 0x2b] & char.bonus.INVINCIBLE) != 0 || super.active)
 
-			bool Standing = !((((u32[char.object_standing_on + 0xffff0000] == 0x024090) && !(u8[A1 + 0x34] != 0 || (u8[A1 + 0x2b] & char.bonus.INVINCIBLE) != 0 || super.active)) || (u32[char.object_standing_on + 0xffff0000] == 0x022ef4) || (u32[char.object_standing_on + 0xffff0000] == 0x0427e2) || (u32[char.object_standing_on + 0xffff0000] == 0x023490) || (u32[char.object_standing_on + 0xffff0000] == 0x0462b6) || (u32[char.object_standing_on + 0xffff0000] == 0x0480d4) || (u32[char.object_standing_on + 0xffff0000] == 0x8b384) || ((u32[char.object_standing_on + 0xffff0000] == 0x01f45e) && !Lava_Electric_Check) || ((u32[char.object_standing_on + 0xffff0000] == 0x059fdc) && !Lava_Electric_Check) || (u32[char.object_standing_on + 0xffff0000] == 0x03cb66)) && (char.flags & char.flag.ON_OBJECT) || (objA1.update_address == 0x01a64a || objA1.update_address == 0x044048 || objA1.update_address == 0x042c80 || objA1.update_address == 0x03cf90 || objA1.update_address == 0x0263dc || objA1.update_address == 0x0917b4 || objA1.update_address == 0x0688f4) )
+			bool Standing = !((((u32[char.object_standing_on + 0xffff0000] == 0x024090) && !(u8[A1 + 0x34] != 0 || (u8[A1 + 0x2b] & char.bonus.INVINCIBLE) != 0 || super.active)) || (u32[char.object_standing_on + 0xffff0000] == 0x022ef4) || (u32[char.object_standing_on + 0xffff0000] == 0x0318f2) || (u32[char.object_standing_on + 0xffff0000] == 0x02c3ca) || (u32[char.object_standing_on + 0xffff0000] == 0x0427e2) || (u32[char.object_standing_on + 0xffff0000] == 0x023490) || (u32[char.object_standing_on + 0xffff0000] == 0x0462b6) || (u32[char.object_standing_on + 0xffff0000] == 0x0480d4) || (u32[char.object_standing_on + 0xffff0000] == 0x8b384) || ((u32[char.object_standing_on + 0xffff0000] == 0x01f45e) && !Lava_Electric_Check) || ((u32[char.object_standing_on + 0xffff0000] == 0x059fdc) && !Lava_Electric_Check) || (u32[char.object_standing_on + 0xffff0000] == 0x03cb66)) && (char.flags & char.flag.ON_OBJECT) || (objA1.update_address == 0x01a64a || objA1.update_address == 0x044048 || objA1.update_address == 0x042c80 || objA1.update_address == 0x03cf90 || objA1.update_address == 0x0263dc || objA1.update_address == 0x0917b4 || objA1.update_address == 0x0688f4) )
 
 			if (HD_Bounce != 5)
 			{
@@ -736,13 +758,9 @@ function void Mighty.LandingOnGroundResetState()
 				else if (HD_Bounce == 6)
 				{
 					if (Held_Bounce_Vel == 0)
-					{
 						char.velocity.y = -0x20
-					}
 					else
-					{
 						char.velocity.y -= (char.flags & char.flag.UNDERWATER) ? (Held_Bounce_Vel / 2) : (competition_mode.active) ? (Held_Bounce_Vel - 0x90) : Held_Bounce_Vel
-					}
 				}
 				else
 				{
@@ -1293,8 +1311,7 @@ function void Character.OnCollisionWithDynamicObject()
 		}
 		else if (D1.u8 == 0x80)
 		{
-			// Deflect the orange spikes during the DEZ act 1 boss, the stalactities in LRZ, the icicles in ICZ, the air born spikes from the little robots during the DEZ act 2 boss, and the relief arrows
-			if ((objA1.update_address == 0x07e972 || objA1.update_address == 0x27E2D0 || objA1.update_address == 0x07f62e || objA1.update_address == 0x0856de || objA1.update_address == 0x0428d6 || objA1.update_address == 0x034518) && (char.state == char.state.ROLLING || char.state == char.state.COWERING || char.state == char.state.SPINDASH))
+			if (MightyShellDeflect() && (char.state == char.state.ROLLING || char.state == char.state.COWERING || char.state == char.state.SPINDASH))
 				deflectProjectile()
 			else
 			{
@@ -1322,6 +1339,16 @@ function void Character.OnCollisionWithDynamicObject()
 			fn0103ba()
 		}
 	}
+}
+
+// If you want to implement any custom objects that Mighty should deflect
+function bool MightyShellDeflect()
+{
+	// Deflect the orange spikes during the DEZ act 1 boss, the stalactities in LRZ, the icicles in ICZ, the air born spikes from the little robots during the DEZ act 2 boss, and the relief arrows
+	if (objA1.update_address == 0x07e972 || objA1.update_address == 0x27E2D0 || objA1.update_address == 0x07f62e || objA1.update_address == 0x0856de || objA1.update_address == 0x0428d6 || objA1.update_address == 0x034518)
+		return true
+
+	return base.MightyShellDeflect()
 }
 
 global u32 obj_to_ignore
@@ -1526,7 +1553,7 @@ function bool Spike_Rebound()
 		objA1.velocity.x = (u8[A1 + 0x2a] & char.flag.FACING_LEFT) ? 0x300 : -0x300
 		
 		MightySpikeCollision = 0
-		objA1.state = char.state.FALLING_PANIC
+		objA1.state = char.state.MIGHTY_FALLING
 		objA1.flags2a |= char.flag.IN_AIR// | char.flag.ROLLING)
 
 		MightyBounced = true
@@ -2041,7 +2068,7 @@ function bool Mighty_checkForSpikyObj()
 				is_spiky = true
 		}
 		// ICZ Wall spike cluster
-		else if (objA1.update_address == 0x085140)
+		else if (objA1.update_address == 0x085140 && objA1.subtype2c == 0)
 		{
 			// Bounce_off = true
 			Do_not_flash = true
@@ -2064,7 +2091,7 @@ function bool Mighty_checkForSpikyObj()
 			}
 			objA0.velocity.y = (objA0.velocity.y < 0) ? 0x200 : -0x200
 
-			objA0.state = char.state.FALLING_PANIC
+			objA0.state = char.state.MIGHTY_FALLING
 			objA0.flags2a |= char.flag.IN_AIR// | char.flag.ROLLING)
 
 			MightyBounced = true
@@ -2224,7 +2251,7 @@ function bool Mighty_checkForSpikyObj()
 			objA0.velocity.x = (char.flags & char.flag.FACING_LEFT) ? 0x300 : -0x300
 		}
 
-		objA0.state = char.state.FALLING_PANIC
+		objA0.state = char.state.MIGHTY_FALLING
 		objA0.flags2a |= char.flag.IN_AIR// | char.flag.ROLLING)
 
 		MightyBounced = true
@@ -2642,7 +2669,6 @@ function void Character.updateBonusEffects()
 }
 
 
-global bool Mighty_Spike_Bounce
 global bool bouncy = true
 //Mighty check for spikes
 //Custom function for spike immunity check
@@ -2739,17 +2765,7 @@ function bool spikecheck()
 				}
 			}
 			else
-			{
-				if (Mighty_Spike_Bounce == 0) // Mania spike bounce
-					objA1.velocity.x = (u8[A1 + 0x2a] & 0x01) ? -0x300 : 0x300
-				else // Pre-4.0 spike bounce
-				{
-					if (objA1.velocity.x <= 0)
-						objA1.velocity.x = 0x300
-					else if (objA1.velocity.x>0)
-						objA1.velocity.x = -0x300
-				}
-			}
+				objA1.velocity.x = (u8[A1 + 0x2a] & 0x01) ? -0x300 : 0x300
 
 			//underwater?
 			if (u8[A1 + 0x2a] & char.flag.UNDERWATER)//much weaker underwater
@@ -2772,7 +2788,7 @@ function bool spikecheck()
 				u8[A1 + 0x2a] |= char.flag.ROLLING
 			}
 			else
-				objA1.state = char.state.FALLING_PANIC
+				objA1.state = char.state.MIGHTY_FALLING
 			objA1.flags2a |= char.flag.IN_AIR// | char.flag.ROLLING)
 			//u8[A1 + 0x2a] |= 0x01 <-- wrong
 			//D3 = u32[A1 + 0x14]
@@ -3278,7 +3294,6 @@ function void Character.LandingOnGround()
 		base.Character.LandingOnGround()
 		return
 	}
-	Fall_Anim_Corkscrew = 0
 
 	MightyWasDropin = false
 
@@ -3327,7 +3342,6 @@ function void Character.LandingOnGroundNoSpindash()
 		base.Character.LandingOnGroundNoSpindash()
 		return
 	}
-	FreeFall = 0
 	MightyWasDropin = false
 
 	RollingIntoSpikes = false
@@ -3388,4 +3402,65 @@ function void fn0317ae()
 		u8[A1 + 0x0f] = 0 // MightyCollisionTimer
 		u8[A1 + 0x0d] &= ~0x40
 	}
+}
+
+// MGZ Spinning wheel triggers
+//# address-hook(0x025d9c) end(0x025ea0)
+function void fn025d9c()
+{
+	if (u8[0xffffb000 + 0x38] == CHARACTER_SONIC && global.xtrachar == 1)
+	{
+		D1.u16 = 0x1b
+		D2.u16 = 0x10
+		D4.u16 = objA0.position.x.u16
+		A2 = 0x025f0e
+		fn01dd0e()
+
+		D6 = (D6 << 16) + (D6 >> 16)
+		D6.u16 &= 0x33
+		if (D6.u16 != 0)
+		{
+			D0.u8 = D6.u8 & 0x11
+			if (D0.u8 != 0)
+			{
+				A1 = 0xffffb000
+				if (GfxMightyDroppingDown) // Mighty should be able to trigger the wheels with his hammer drop
+				{
+					u16[A0 + 0x30] = 0x3c
+					u8[A0 + 0x32] = 1
+					D0.u8 = (u8[A1 + 0x2a] + objA0.flags2a) & 0x01
+					if (D0.u8 == 0)
+					{
+						u8[A0 + 0x32] = 0xff
+					}
+				}
+			}
+
+			D6.u8 &= 0x22
+			if (D6.u8 != 0)
+			{
+				A1 = 0xffffb04a
+				if (GfxMightyDroppingDown)
+				{
+					u16[A0 + 0x30] = 0x3c
+					u8[A0 + 0x32] = 1
+					D0.u8 = (u8[A1 + 0x2a] + objA0.flags2a) & 0x01
+					if (D0.u8 == 0)
+					{
+						u8[A0 + 0x32] = 0xff
+					}
+				}
+			}
+		}
+	}
+	base.fn025d9c()
+}
+
+// jumping on the spinning blue wheels will put Mighty in his uncurled state
+//# address-hook(0x025ea6) end(0x025f0c)
+function void fn025ea6()
+{
+	base.fn025ea6()
+	if (objA1.state != char.state.SPINDASH && u8[0xffffb000 + 0x38] == CHARACTER_SONIC && global.xtrachar == 1)
+		objA1.state = char.state.MIGHTY_FALLING
 }

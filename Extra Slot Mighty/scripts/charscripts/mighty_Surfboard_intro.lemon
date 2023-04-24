@@ -650,14 +650,18 @@ function void fn2212ea()
 global bool prevent_water
 global bool Fixdamodorder
 
+function bool MightyModConflictCheck()
+{
+	return ((Mods.getModPriority("Sonic 3: D.A. Garden Edition") > Mods.getModPriority("Extra Character Slots")) || (Mods.getModPriority("Extra Slot Ray") > Mods.getModPriority("Extra Slot Mighty")) || (Mods.getModPriority("Extra Character Slots") > Mods.getModPriority("Extra Slot Mighty")) || Mods.isModActive("Ultimate Mighty") || Renderer.hasCustomSprite("goal_mighty_UW"))
+}
+
 function void initializeMainGame()
 {
 	prevent_water = 0
 	Fixdamodorder = false
-
 	if (global.xtrachar == 1)
 	{
-		if ((Mods.getModPriority("Sonic 3: D.A. Garden Edition") > Mods.getModPriority("Extra Character Slots")) || (Mods.getModPriority("Extra Slot Ray") > Mods.getModPriority("Extra Slot Mighty")) || (Mods.getModPriority("Extra Character Slots") > Mods.getModPriority("Extra Slot Mighty")) || Mods.isModActive("Ultimate Mighty"))
+		if (MightyModConflictCheck())
 		{
 			base.initializeMainGame()
 			Fixdamodorder = true

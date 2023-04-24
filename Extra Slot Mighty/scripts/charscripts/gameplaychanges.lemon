@@ -15,7 +15,7 @@ function void ExtraChar.Menu.actselect.updateControl()
 
 function void Init()
 {
-	if (!competition_mode.active && (XtraChar != 1 || char.character != CHARACTER_SONIC))
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC))
 		StartInKnuxPath = (MightyAIZ2 || MightyICZ2) ? true : false
 
     base.Init()
@@ -25,7 +25,7 @@ function void Standalone.onLevelStart()
 {
 	if ((global.zone_act == 0x0001 && !MightyAIZ2) || (global.zone_act == 0x0501 && !MightyICZ2))
 		StartInKnuxPath = false
-	if (!competition_mode.active && (XtraChar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
+	if (!competition_mode.active && (global.xtrachar != 1 || char.character != CHARACTER_SONIC) || (competition_mode.active && competition.xtrachar != 0x01))
 	{
 		mainchar.groundhit.velocity.x = 0
 		mainchar.groundhit.velocity.y = 0
@@ -42,22 +42,22 @@ function void fn085bda()
 	base.fn085bda()
 }
 
-global bool FallingFix
-//# address-hook(0x0384b2) end(0x03852e)
-function void RunOnWaterHandler.Update()
-{
-	if (!Mighty_Uncurled_Fall)
-		FallingFix = true
-	base.RunOnWaterHandler.Update()
-}
+// global bool FallingFix
+// //# address-hook(0x0384b2) end(0x03852e)
+// function void RunOnWaterHandler.Update()
+// {
+// 	if (!Mighty_Uncurled_Fall)
+// 		FallingFix = true
+// 	base.RunOnWaterHandler.Update()
+// }
 
-//# address-hook(0x064964) end(0x06497e)
-function void fn064964()
-{
-	base.fn064964()
-	if (!Mighty_Uncurled_Fall)
-		FallingFix = true
-}
+// //# address-hook(0x064964) end(0x06497e)
+// function void fn064964()
+// {
+// 	base.fn064964()
+// 	if (!Mighty_Uncurled_Fall)
+// 		FallingFix = true
+// }
 
 //v1.11 track knux path
 //v1.12 improved restart tracking
@@ -65,7 +65,7 @@ function void fn064964()
 function void TitleCard.Init()
 {
 	//when the titlecard is called, I CAN CHECK FOR THE CAMERA Y AND STORE THE PATH INFO!
-	if (XtraChar == 1)
+	if (global.xtrachar == 1)
 	{
 		if ( (global.zone_act == 0x0001 || global.zone_act == 0x0501)  && global.act.apparent == 1)
 		{ //AIZ2 or ICZ2
@@ -98,9 +98,9 @@ global bool BubbleBounce
 //# address-hook(0x006a76) end(0x006bd6)
 function void InitializeGameCharacters()
 {
-	if (XtraChar == 1)
+	if (global.xtrachar == 1)
 	{
-		FallingFix = false
+		// FallingFix = false
 		MightyWasDropin = false
 		Do_not_flash = false
 		MightyFrameCounter = 0
@@ -136,16 +136,9 @@ function void ExtraChar.CompetitionMode.Character.setupPhysics(u8 xtrachar, u16 
 //# address-hook(0x018466) end(0x018680)
 function void fn018466()
 {
-    if (XtraChar == 1 && Mighty.KnuxStage == 1 && global.zone_act.apparent == 0x0001)
-    {
-        base.fn018466()
-        Game.setUnderwaterAudioEffect(0)
-    }
-    else
-    {
-        base.fn018466()
-        return
-    }
+	base.fn018466()
+	if (global.xtrachar == 1 && Mighty.KnuxStage == 1 && global.zone_act.apparent == 0x0001)
+		Game.setUnderwaterAudioEffect(0)
 }
 
 //start location and animation has to be fixed for HCZ1 and ICZ1
@@ -153,7 +146,7 @@ function void fn018466()
 //# address-hook(0x0067ee) end(0x0069b6)
 function void fn0067ee()
 {
-	if (XtraChar != 1) //check only for Mighty 
+	if (global.xtrachar != 1) //check only for Mighty 
 	{
 		base.fn0067ee()
 		return
@@ -161,28 +154,29 @@ function void fn0067ee()
 
 	//Is Extra Life UNDER mighty in load order?
 	//Extra life has to take over in CNZ and MHZ
-	u64 extraLife = stringformat("goal_extraLife_UW", 0)
-	if (Renderer.hasCustomSprite(extraLife) && ((global.zone_act == 0x0300) || (global.zone_act == 0x0700)))
+	
+	// Do I even need this?
+	if (Renderer.hasCustomSprite("goal_extraLife_UW") && ((global.zone_act == 0x0300) || (global.zone_act == 0x0700)))
 	{
 		base.fn0067ee()
 		return
 	}
 
-	if (Mighty_Level_Transition_Fall != 1)
-	{
-		u8[0xffffF737] = 1
-		u8[0xffffF738] = 1
-	}
-	else
-	{
-		if ((global.zone_act == 0x0100) || (global.zone_act == 0x0200) || (global.zone_act == 0x0900 && !isMainCharacter(CHARACTER_KNUCKLES)) || (global.zone_act == 0x1600))
-		{
-			// Beginning of Hydrocity Zone, Marble Garden Zone, Lava Reef Zone, or Lava Reef Boss Act
-			u8[0xffffE656] = 1 // P1
-			if (global.characters != CHARS_TAILS_ALONE)
-				u8[0xffffE657] = 1 // P2
-		}
-	}
+	// if (Mighty_Level_Transition_Fall != 1)
+	// {
+	// 	u8[0xffffF737] = 1
+	// 	u8[0xffffF738] = 1
+	// }
+	// else
+	// {
+	// 	if ((global.zone_act == 0x0100) || (global.zone_act == 0x0200) || (global.zone_act == 0x0900 && !isMainCharacter(CHARACTER_KNUCKLES)) || (global.zone_act == 0x1600))
+	// 	{
+	// 		// Beginning of Hydrocity Zone, Marble Garden Zone, Lava Reef Zone, or Lava Reef Boss Act
+	// 		u8[0xffffE656] = 1 // P1
+	// 		if (global.characters != CHARS_TAILS_ALONE)
+	// 			u8[0xffffE657] = 1 // P2
+	// 	}
+	// }
 
 	u32[0xffffb094] = 0x006c2c
 	InitializeGameCharacters()
@@ -211,8 +205,8 @@ function void fn0067ee()
 	else if (global.zone_act == 0x0100)
 	{
 		// Hydrocity Zone
-		ShouldUncurl = true
-		objA1.state = char.state.FALLING_PANIC
+
+		objA1.state = MightyFallEntrance()
 		
 		//Mighty should roll in if coming from knux path (because they jumped)
 		if (global.characters != CHARS_KNUCKLES_ALONE && level.start_location == 2)
@@ -233,21 +227,9 @@ function void fn0067ee()
 		}
 		if (u32[A2] != 0)
 		{
-			u8[A2 + 0x20] = char.state.FALLING_PANIC
+			u8[A2 + 0x20] = MightyFallEntrance()
 			u8[A2 + 0x2a] |= char.flag.IN_AIR
 			u8[A2 + 0x40] = 0x01
-		}
-	}
-	else if (global.zone_act == 0x0200)
-	{
-		// Marble Garden Zone
-		ShouldUncurl = true
-		objA1.state = char.state.FALLING_PANIC
-		objA1.flags2a |= char.flag.IN_AIR
-		if (u32[A2] != 0)
-		{
-			u8[A2 + 0x20] = char.state.FALLING_PANIC
-			u8[A2 + 0x2a] |= char.flag.IN_AIR
 		}
 	}
 	else if (global.zone_act == 0x0300)
@@ -302,30 +284,18 @@ function void fn0067ee()
 			// }
 		}
 	}
-	else if (global.zone_act == 0x0400)
-    {
-		// Flying Battery Zone
-		base.fn0067ee()
-		return
-	}
 	else if (global.zone_act == 0x0500)
 	{
 		// IceCap Zone
 		// Mighty Starts like Tails
 		u32[0xffffb172] = 0x039b66	
 	}
-	else if (global.zone_act == 0x0600)
-	{
-		// Launch Base Zone
-		u32[0xffffb172] = 0x039a40
-	}
 	else if (global.zone_act == 0x0700)
 	{
 		// Mushroom Hill Zone
 		if (global.lock_on_state == 0 && level.start_location == 2)
 		{
-			ShouldUncurl = true
-			objA1.state = char.state.FALLING_PANIC
+			objA1.state = MightyFallEntrance()
 			objA1.flags2a |= char.flag.IN_AIR
 			objA1.position.x.u16 = 0x1c2
 			objA1.position.y.u16 = 0x485
@@ -336,65 +306,23 @@ function void fn0067ee()
 			return
 		}
 	}
-	else if (global.zone_act == 0x0800)
+	else
 	{
-		// Sandopolis Zone
-		u32[0xffffb172] = 0x041fee
-		objA1.state = char.state.ROLLING
-		objA1.flags2a |= char.flag.IN_AIR
-		if (u32[A2] != 0)
-		{
-			u8[A2 + 0x20] = char.state.ROLLING
-			u8[A2 + 0x2a] |= char.flag.IN_AIR
-		}
+		// Everything else
+		base.fn0067ee()
+		return
 	}
-	else if (global.zone_act == 0x0900)
-	{
-		// Lava Reef Zone
-		if (global.characters != CHARS_KNUCKLES_ALONE)
-		{
-			ShouldUncurl = true
-			objA1.state = char.state.FALLING_PANIC
-			objA1.flags2a |= char.flag.IN_AIR
-			if (u32[A2] != 0)
-			{
-				u8[A2 + 0x20] = char.state.FALLING_PANIC
-				u8[A2 + 0x2a] |= char.flag.IN_AIR
-			}
-		}
-		else
-		{
-			u32[0xffffb172] = 0x044a0c
-		}
-	}
-	else if (global.zone_act == 0x0b00)
-	{
-		// Death Egg Zone
-		u32[0xffffb172] = 0x044a0c
-	}
-	else if (global.zone_act == 0x1600)
-	{
-		// Lava Reef boss act
-		ShouldUncurl = true
-		objA1.state = char.state.FALLING_PANIC
-		objA1.flags2a |= char.flag.IN_AIR
-		if (u32[A2] != 0)
-		{
-			u8[A2 + 0x20] = char.state.FALLING_PANIC
-			u8[A2 + 0x2a] |= char.flag.IN_AIR
-		}
-	}
-	else if (global.zone_act == 0x1601)
-	{
-		// Hidden Palace Zone
-		u32[0xffffb172] = 0x044a0c
-	}
+}
+
+function u8 MightyFallEntrance()
+{
+	return (Mods.isModActive("Falling sprites for all") && System.getGlobalVariableValueByName("Transitions")) ? 0x36 : char.state.FALLING_PANIC	
 }
 
 //# address-hook(0x074768) end(0x0747d0)
 function void fn074768()
 {
-	if (XtraChar == 1)
+	if (global.xtrachar == 1)
 		Kosinski.addToDMAQueue(0, 0) // Turns Eggrobo into Eggman in LBZ act bomb cutscene
 	base.fn074768()
 }
@@ -404,7 +332,7 @@ function void fn074768()
 //# address-hook(0x01be46) end(0x01bfae)
 function void SetupCharacterAtStartPosition()
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.SetupCharacterAtStartPosition()
 		return
@@ -697,22 +625,6 @@ function void Level.InitializeWater()
 	}
 }
 
-// Fixed underwater muffle sound
-//# address-hook(0x018466) end(0x018680)
-function void fn018466()
-{
-	if (XtraChar == 1 && Mighty.KnuxStage == 1 && global.zone_act.apparent == 0x0001)
-	{
-		base.fn018466()
-		Game.setUnderwaterAudioEffect(0)
-	}
-	else
-	{
-		base.fn018466()
-		return
-	}
-}
-
 //# address-hook(0x006dde) end(0x006e6c)
 function void UpdateWaterSurfaceLevel.AIZ2()
 {
@@ -795,7 +707,7 @@ function void fn069526()
 {
 	// Part of cutscene: Running onto the bridge over Hydrocity
 	//I forgot that this should only affect mighty
-	if (global.zone_act != 0x0001 || XtraChar != 1)
+	if (global.zone_act != 0x0001 || global.xtrachar != 1)
     {
         base.fn069526()
         return
@@ -837,7 +749,7 @@ function void fn069526()
 //# address-hook(0x0695ce) end(0x069610)
 function void fn0695ce()
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.fn0695ce()
 		return
@@ -868,7 +780,7 @@ function void fn0695ce()
 function void fn06c8f4()
 {
 	base.fn06c8f4()
-	if (XtraChar == 1 || useKnucklesAndTails)
+	if (global.xtrachar == 1 || useKnucklesAndTails)
 	{
 		if (level.wait_for_results)
 			return
@@ -884,7 +796,7 @@ function void Character.TailsAI.Init()
 {
 
 	//make it only for mighty and only in ICZ
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.Character.TailsAI.Init()
 		return
@@ -969,7 +881,7 @@ function void Character.TailsAI.Init()
 function void fn01fd08()
 {
 	// if character isn't Mighty or the wall jump is disabled, then return base
-	if (XtraChar != 1 || (Mighty_Custom_Mappings == 0 && Wall_Jump_Button == 0x00))
+	if (global.xtrachar != 1 || (Mighty_Custom_Mappings == 0 && Wall_Jump_Button == 0x00))
 	{
 		base.fn01fd08()
 		return
@@ -1063,7 +975,7 @@ function void fn01fd08()
 //# address-hook(0x08a280) end(0x08a2dc)
 function void fn08a280()
 {
-	if (XtraChar != 1 || (Mighty_Custom_Mappings == 0 && Wall_Jump_Button == 0x00))
+	if (global.xtrachar != 1 || (Mighty_Custom_Mappings == 0 && Wall_Jump_Button == 0x00))
 	{
 		base.fn08a280()
 		return
@@ -1136,7 +1048,7 @@ global bool StoryBlocks
 //# address-hook(0x021818) end(0x021936)
 function void fn021818()
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.fn021818()
 		return
@@ -1240,7 +1152,7 @@ function void DamageCharacter()
 //# address-hook(0x0863ec) end(0x086422)
 function void fn0863ec()
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.fn0863ec()
 		return
@@ -1267,7 +1179,7 @@ function void fn0863ec()
 //# address-hook(0x05a12e) end(0x05a152)
 function void InitLevelTiles.HPZ()
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.InitLevelTiles.HPZ()
 		return
@@ -1283,7 +1195,7 @@ global u8 EndLocation
 //# address-hook(0x085e3a) end(0x085e50)
 function void TriggerNextZone()
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.TriggerNextZone()
 		return
@@ -1350,14 +1262,14 @@ function void TriggerNextZone()
 function bool DEZFinalBoss3.canPlayerEnterDoomsday()
 {
 	//Can Mighty enter Doomsday Zone?
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 		return base.DEZFinalBoss3.canPlayerEnterDoomsday()
 	return (MightyDDZ == 0 ? global.chaos_emeralds == 7 : false)
 }
 
 function void fn0803d6()
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.fn0803d6()
 		return
@@ -1392,7 +1304,7 @@ global bool Mighty_Pilot
 //# address-hook(0x05ecb4) end(0x05ed0c)
 function void fn05ecb4()
 {
-    if (XtraChar != 1)
+    if (global.xtrachar != 1)
     {
         base.fn05ecb4()
         return
@@ -1431,7 +1343,7 @@ function void fn05ecb4()
 //# address-hook(0x05eb32) end(0x05eb66)
 function void fn05eb32()
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
     {
         base.fn05eb32()
         return
@@ -1458,7 +1370,7 @@ function void fn05eb32()
 #if STANDALONE
 function bool onCharacterPressedJumpInMidAir(u8 input_state, u8 input_pressed)
 {
-	if (XtraChar != 1 || global.characters != CHARS_SONIC_AND_TAILS)
+	if (global.xtrachar != 1 || global.characters != CHARS_SONIC_AND_TAILS)
 	{
 		return base.onCharacterPressedJumpInMidAir(input_state, input_pressed)
 	}
@@ -1500,7 +1412,7 @@ function bool onCharacterPressedJumpInMidAir(u8 input_state, u8 input_pressed)
 //# address-hook(0x03fd4e) end(0x03fe42)
 function void fn03fd4e()
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.fn03fd4e()
 		return
@@ -1580,7 +1492,7 @@ function void fn03fd4e()
 //# address-hook(0x03fe70) end(0x03ff7e)
 function void fn03fe70()
 {
-	if (XtraChar != 1)
+	if (global.xtrachar != 1)
 	{
 		base.fn03fe70()
 		return

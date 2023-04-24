@@ -4,7 +4,7 @@
 		"Name": "Extra Slot Mighty",
 		"Author": "iCloudius",
 		"Description": "Mighty the Armadillo now appears as an extra playable character for Sonic 3 A.I.R without overriding Sonic's slot",
-		"ModVersion": "v5.051",
+		"ModVersion": "v5.1",
 		"GameVersion": "v22.05.15.0"
 	},
 	"Settings":
@@ -105,18 +105,6 @@
 				{
 					"0": "Yes",
 					"1": "No"
-				}
-			},
-			{
-				"InternalName": "Spike bounce",
-				"DisplayName": "Spike Bounce",
-				"Variable": "Mighty_Spike_Bounce",
-				"DefaultValue": "0",	
-				"Category": "Gameplay",			
-				"Options":
-				{
-					"0": "Mania",
-					"1": "pre-4.0"
 				}
 			},
 			{
@@ -294,54 +282,6 @@
 				"Variable": "EXPAL",
 				"DefaultValue": "0",
 				"Category": "Super Palette",				
-				"Options":
-				{
-					"0": "Off",
-					"1": "On"
-				}
-			},
-			{
-				"InternalName": "Spring Fall",
-				"DisplayName": "Bouncing off a Spring",
-				"Variable": "Mighty_Twirl_Fall",
-				"DefaultValue": "0",
-				"Category": "Falling animation",		
-				"Options":
-				{
-					"0": "Off",
-					"1": "On"
-				}
-			},
-			{
-				"InternalName": "Transform Fall",
-				"DisplayName": "After Transforming",
-				"Variable": "Mighty_Transform_Fall",
-				"DefaultValue": "1",	
-				"Category": "Falling animation",	
-				"Options":
-				{
-					"0": "Off",
-					"1": "On"
-				}
-			},
-			{
-				"InternalName": "From AIZ to that one zone",
-				"DisplayName": "Level Transitions",
-				"Variable": "Mighty_Level_Transition_Fall",
-				"DefaultValue": "0",
-				"Category": "Falling animation",		
-				"Options":
-				{
-					"0": "Off",
-					"1": "On"
-				}
-			},
-			{
-				"InternalName": "Uncurl",
-				"DisplayName": "While Uncurled",
-				"Variable": "Mighty_Uncurled_Fall",
-				"DefaultValue": "0",
-				"Category": "Falling animation",		
 				"Options":
 				{
 					"0": "Off",
