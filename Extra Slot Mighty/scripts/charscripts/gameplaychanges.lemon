@@ -1299,7 +1299,7 @@ function void fn0803d6()
 //-------------------------------------------------------//
 // Outro pilot                                           //
 //-------------------------------------------------------//
-global bool Mighty_Pilot
+global u8 Mighty_Pilot
 // Zoomed out sonic head
 //# address-hook(0x05ecb4) end(0x05ed0c)
 function void fn05ecb4()
