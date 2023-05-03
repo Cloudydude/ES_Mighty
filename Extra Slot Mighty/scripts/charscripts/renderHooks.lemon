@@ -6,37 +6,41 @@ global u8 Mighty_Banner_Text
 global u8 board_angle
 global bool Turn_the_Board
 
-function bool ESS_drawchar_Es(s16 px, s16 py, bool no_save, u8 ES_val)
+function bool ESS_drawChar_Es(s16 px, s16 py, bool no_save, u8 ES_val)
 {
 	if (ES_val == 0x01)
 	{
-		s16 posx = no_save ? px + 0x2f : px + 0x2f
+		s16 posx = px
 		if (Mighty_Partner == 0x01)
 			posx -= 0x03
-		s16 posy = no_save ? py + 0x3f : py + 0x89
-		objA0.animation.timer = ES_val
 		
-		ExtraChar.DataSelect.drawCharacterSprite(posx, posy, 0x9fff)
+		ExtraChar.DataSelect.drawCharacterSprite(posx, py, 0x6000)
 		return true
 	}
 	
-	return base.ESS_drawchar_Es(px, py, no_save, ES_val)
+	return base.ESS_drawChar_Es(px, py, no_save, ES_val)
 }
 
-function s32 ESS_saveboxgetcolor_Es(u8 ES_val)
+function s32 ESS_saveBoxGetColor_Es(u8 ES_val)
 {
 	if (ES_val == 0x01)
 		return 0x00906c
 	
-	return base.ESS_saveboxgetcolor_Es(ES_val)
+	return base.ESS_saveBoxGetColor_Es(ES_val)
 }
+
+global u8 lastGameMode
 
 function void ExtraChar.DataSelect.drawCharacterSprite(s16 px, s16 py, u16 renderQueue)
 {
 	bool IsRayaPartner = (Mods.isModActive("Extra Slot Ray") && (System.getGlobalVariableValueByName("Ray_Partner") == 3 || System.getGlobalVariableValueByName("Ray_Partner") == 4))
-
+	// System.writeDisplayLine(stringformat("A0 = %x", A0))
+//	System.writeDisplayLine(stringformat("global.game_mode = %x", global.game_mode))
+	// if (global.game_mode == 0x9c)
+	// // 	lastGameMode = 0x9c
+	// System.writeDisplayLine(stringformat("objA0.animation.timer = %x", objA0.animation.timer))
 #if EXTRA_SAVE_SLOTS_ACTIVE
-	if (objA0.animation.timer == 0x01 || u8[A3 + 0x24] == 0x01)
+	if (u8[A3 + 0x24] == 0x01)
 #else
 	if (objA0.animation.timer == 0x01)
 #endif
@@ -166,11 +170,26 @@ function void ExtraChar.Competition.drawCharacterContinueSprite(s16 px, s16 py, 
 	base.ExtraChar.Competition.drawCharacterContinueSprite(px, py, renderQueue)
 }
 
+function u64 ESS_getCharLifeIcon(u64 name)
+{
+	if (u8[A3 + 0x24] == 0x01)
+		return (Mighty_Sprite_type) ? "ESS_Life_S3Mighty" : "ESS_Life_ManiaMighty"
+	return base.ESS_getCharLifeIcon(name)
+}
+
+function u64 ESS_getCharContIcon(u64 name)
+{
+
+	if (u8[A3 + 0x24] == 0x01)
+		return (Mighty_Sprite_type) ? "ESS_Cont_S3Mighty" : "ESS_Cont_ManiaMighty"
+	return base.ESS_getCharContIcon(name)
+}
+
 function void ExtraChar.Challenges.drawCharacterContinueSprite(u8 xtrachar, s16 px, s16 py, u8 flags, u16 renderQueue)
 {
 	if (xtrachar == 0x01)
 	{
-		string key = "ESS_Cont_Es1"
+		string key = (Mighty_Sprite_type) ? "Mighty_DA_Challenges_S3" : "Mighty_DA_Challenges_M"
 		Renderer.drawCustomSprite(key, px, py, 0x00, flags, renderQueue)
 		return
 	}
@@ -404,59 +423,17 @@ function bool Standalone.onWriteToSpriteTable(s16 px, s16 py, u16 renderQueue)
 		if (gameMode == 0x48 || gameMode == 0x0c)	// Blue Spheres results + fade to main game afterwards
 		{
 								// Blue Spheres results texts							// CHARACTER TEXT
-			if (objA0.update_address == 0x02ea50 || objA0.update_address == 0x02ec1e || objA0.update_address == 0x02dd98)
+			if (objA0.update_address == 0x02ea50 || objA0.update_address == 0x02ec1e || objA0.update_address == 0x02dd98) // <-- Gonna have to split this off for the level results
 			{
 				bool isSKStage = (global.lock_on_state == 0 && global.sk_bluespheres)
-				u8 Y_adjust = ((Mods.isModActive("Megamix 5.0 Hud") && System.getGlobalVariableValueByName("Mighty_hud_type") == 3) ? 0x9 : 0x8)
-				if (objA0.animation.sprite == 0x13 || objA0.animation.sprite == 0x16) // MIGHTY
+				if (objA0.animation.sprite == 0x13) // MIGHTY
 				{
-					bool adjustforS3stages
-					bool adjustforSKstages
-//					bool adjustforallemeralds
-					if (!Mods.isModActive("Megamix 5.0 Hud"))
-					{
-						adjustforS3stages = (!isSKStage && global.chaos_emeralds != 7)
-						adjustforSKstages = (isSKStage && global.super_emeralds != 7)
-//						adjustforallemeralds = (global.super_emeralds == 7)
-					}
 					if (Mania_Title_Cards)
-						Renderer.drawCustomSprite("Result_NamePlate_Mighty", (objA0.animation.sprite == 0x13) ? px - 18 : px, py, 0x00, SPRITE_FLAG_PRIO, renderQueue - 50)
-					else if (System.getGlobalVariableValueByName("Mighty_hud_type") == 1)
-					{
-						key = "Mighty_Mania_Plate"
-						if (objA0.animation.sprite == 0x13)
-						{
-							Renderer.drawCustomSprite(key, px - 0x15, py, 0x00, SPRITE_FLAG_PRIO, renderQueue)
-						}
-						else
-						{
-							u8 X_adjust = (adjustforS3stages || adjustforSKstages) ? 0x0d : 0x10
-							if (A0 == 0xffffbde0 || A0 == 0xffffc2ca) // Now Mighty can
-								Renderer.drawCustomSprite(key, px + 0x10, py, 0x00, SPRITE_FLAG_PRIO, renderQueue)
-							else if (A0 == 0xffffbf08 || A0 == 0xffffc3f2) // be super/hyper
-								Renderer.drawCustomSprite(key, px + 0x1f, py, 0x00, SPRITE_FLAG_PRIO, renderQueue)
-							else if (A0 == 0xffffbd96) // Mighty 
-								Renderer.drawCustomSprite(key, px + X_adjust, py, 0x00, SPRITE_FLAG_PRIO, renderQueue)
-						}
-					}
+						Renderer.drawCustomSprite("Result_NamePlate_Mighty", px, py, 0x00, SPRITE_FLAG_PRIO, renderQueue - 50)
 					else
 					{
-						key = (Mods.isModActive("Megamix 5.0 Hud") && System.getGlobalVariableValueByName("Mighty_hud_type") == 3) ? "MegaMix" : "mighty_text"
-						if (objA0.animation.sprite == 0x13)
-						{
-							Renderer.drawCustomSprite(key, px + 0x19 , py + Y_adjust, 0x40, SPRITE_FLAG_PRIO, renderQueue)
-						}
-						else
-						{
-							u8 X_adjust = (adjustforS3stages) ? 0x3c : (adjustforSKstages) ? 0x3b : 0x3d
-							// all emeralds
-							if (A0 == 0xffffbde0 || A0 == 0xffffc2ca) // Now Mighty can
-								Renderer.drawCustomSprite(key, px + 0x3f, py + Y_adjust, 0x40, SPRITE_FLAG_PRIO, renderQueue)
-							else if (A0 == 0xffffbf08 || A0 == 0xffffc3f2) // be super/hyper
-								Renderer.drawCustomSprite(key, px + 0x4b, py + Y_adjust, 0x40, SPRITE_FLAG_PRIO, renderQueue)
-							else if (A0 == 0xffffbd96) // Mighty 
-								Renderer.drawCustomSprite(key, px + X_adjust, py + Y_adjust, 0x40, SPRITE_FLAG_PRIO, renderQueue)
-						}
+						key = (System.getGlobalVariableValueByName("Mighty_hud_type") == 1) ? "Mighty_Mania_Plate" : "mighty_text"
+						Renderer.drawCustomSprite(key, px , py, 0x40, SPRITE_FLAG_PRIO, renderQueue)
 					}
 					return true
 				}
@@ -464,16 +441,12 @@ function bool Standalone.onWriteToSpriteTable(s16 px, s16 py, u16 renderQueue)
 				if (objA0.animation.sprite == 0x12)
 				{
 					if (global.super_emeralds == 7) // HYPER
-					{
-						Renderer.drawCustomSprite(((Mania_Title_Cards) ? "Result_NamePlate_HyperK" : (System.getGlobalVariableValueByName("Mighty_hud_type") == 1) ? "Hyper_Mania_Plate" : (Mods.isModActive("Megamix 5.0 Hud") && System.getGlobalVariableValueByName("Mighty_hud_type") == 3) ? "Hyper_text_MegaMix" : "Hyper_text"), px + 0x10, py, 0x40, SPRITE_FLAG_PRIO, renderQueue)
-						return true
-					}
+						Renderer.drawCustomSprite(((Mania_Title_Cards) ? "Result_NamePlate_HyperK" : (System.getGlobalVariableValueByName("Mighty_hud_type") == 1) ? "Hyper_Mania_Plate" : "Hyper_text"), px, py, 0x40, SPRITE_FLAG_PRIO, renderQueue)
 					else // SUPER
-					{
-						Renderer.drawCustomSprite(((Mania_Title_Cards) ? "Result_NamePlate_SuperK" : (System.getGlobalVariableValueByName("Mighty_hud_type") == 1) ? "Super_Mania_Plate" : (Mods.isModActive("Megamix 5.0 Hud") && System.getGlobalVariableValueByName("Mighty_hud_type") == 3) ? "Super_text_MegaMix" : "Super_text"), px + 0x10, py, 0x40, SPRITE_FLAG_PRIO, renderQueue)
-						return true
-					}
+						Renderer.drawCustomSprite(((Mania_Title_Cards) ? "Result_NamePlate_SuperK" : (System.getGlobalVariableValueByName("Mighty_hud_type") == 1) ? "Super_Mania_Plate" : "Super_text"), px, py, 0x40, SPRITE_FLAG_PRIO, renderQueue)
+					return true
 				}
+				
 				if (objA0.animation.sprite == 0x17 || objA0.animation.sprite == 0x31 || objA0.animation.sprite == 0x36)
 				{
 					Renderer.drawCustomSprite(getCharacterBonusTextIcon(getMainCharacter()), px-60, py-5, 0, SPRITE_FLAG_PRIO, renderQueue-1)

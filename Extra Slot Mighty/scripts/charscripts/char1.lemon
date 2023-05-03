@@ -395,22 +395,38 @@ function bool ExtraChar.renderHUD_char1()
 	return true
 }
 
-// Give Mighty, Knuckles' spacing for the bluespheres results screens
-//# address-hook(0x02e3b8) end(0x02e3c2)
-function void fn02e3b8()
+// Blue Spheres results screen
+//# address-hook(0x02ec80) end(0x02eca6)
+function void fn02ec80()
 {
 	if (global.xtrachar == 1)
-		global.characters = CHARS_KNUCKLES_ALONE
-	base.fn02e3b8()
+	{
+		D0 = -0x0C
+		D1 = 0
+		return
+	}
+	base.fn02ec80()
 }
 
-// Change Mighty back to himself after the bluespheres results screen
-//# address-hook(0x02e410) end(0x02e4d2)
-function void fn02e410()
+//# address-hook(0x02dd3e) end(0x02dd92)
+function void LevelResults.UpdateCharacterNameDisplay()
 {
-	base.fn02e410()
-	if (global.xtrachar == 1 && objA0.countdown_value <= 0)
-		global.characters = (Mighty_Partner == 0) ? CHARS_SONIC_ALONE : CHARS_SONIC_AND_TAILS
+	if (global.xtrachar == 1)
+	{
+		D0 = 0x18
+		// D0 = 0x0e
+		objA0.position.x.u16 -= D0.u16
+		u16[A0 + 0x46] -= D0.u16
+		objA0.box_size.x += D0.u8
+
+		A1 = 0xffff0000 + u16[A0 + 0x48]
+		D0 = (u16[A1 + 0x2c] != 0) ? 0x0028 : 0
+		objA0.sprite_attributes = D0.u16
+		objA0.update_address = 0x02dd98
+		LevelResults.UpdateStaticTextDisplay()
+		return
+	}
+	base.LevelResults.UpdateCharacterNameDisplay()
 }
 
 // Custom Super/Hyper themes
@@ -430,12 +446,6 @@ function u64 getSonicHyperTheme()
 		return "2e_proto"
 	else
 		return base.getSonicHyperTheme()
-}
-
-// Extra Save Slots background color
-function s32 ESS_saveboxgetcolor_Es1()
-{
-	return 0x00906c
 }
 
 //# address-hook(0x00c154) end(0x00c260)

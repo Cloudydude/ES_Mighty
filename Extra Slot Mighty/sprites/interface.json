@@ -3,7 +3,7 @@
 	"continue_icon_mighty":  { "File": "MightyAllBMP.bmp", "Rect": "128,80,17,24", "Center": "9,23" },
 	"continue_icon_slot1":  { "File": "MightyAllBMP.bmp", "Rect": "128,80,17,24", "Center": "9,23" },
 	"monitor1_icon_sonic":  { "File": "Mighty_monitor_life_icons.bmp", "Rect": "16,0,16,16", "Center": "8,8" },
-	"mighty_text":  { "File": "MightyAllBMP.bmp", "Rect": "0,56,90,16", "Center": "45,8" },
+	"mighty_text":  { "File": "MightyAllBMP.bmp", "Rect": "0,56,96,16", "Center": "-6,0" },
 	
 	"dataSel_savePortrait_slot1":  { "File": "Save Portraits.png", "Rect": "0,0,80,56", "Center": "40,120" },
 	"dataSel_savePortrait_superslot1":  { "File": "Save Portraits.png", "Rect": "80,0,80,56", "Center": "40,120" },
@@ -76,9 +76,11 @@
 	"hud_text_perfect_mania":  { "File": "Custom_huds.png", "Rect": "224,64,57,14", "Center": "1,0" },
 	"hud_text_bonus_mania":  { "File": "Custom_huds.png", "Rect": "176,96,43,14", "Center": "1,0" },
 	"hud_text_ring_mania":  { "File": "Custom_huds.png", "Rect": "224,48,33,14", "Center": "1,0" },
-	"Mighty_Mania_Plate":  { "File": "Custom_huds.png", "Rect": "224,96,90,18", "Center": "1,0" },
-	"Super_Mania_Plate":  { "File": "Custom_huds.png", "Rect": "176,126,74,18", "Center": "0,0" },
-	"Hyper_Mania_Plate":  { "File": "Custom_huds.png", "Rect": "251,126,74,18", "Center": "0,0" },
+
+	"Mighty_Mania_Plate":  { "File": "Custom_huds.png", "Rect": "224,96,96,18", "Center": "-6,1" },
+	
+	"Super_Mania_Plate":  { "File": "Custom_huds.png", "Rect": "176,126,74,18", "Center": "0,1" },
+	"Hyper_Mania_Plate":  { "File": "Custom_huds.png", "Rect": "251,126,74,18", "Center": "0,1" },
 	"hud_digit_0_chaotix":  { "File": "Custom_huds.png", "Rect": "352,33,7,13", "Center": "-8,-1" },
 	"hud_digit_1_chaotix":  { "File": "Custom_huds.png", "Rect": "361,33,5,13", "Center": "-9,-1" },
 	"hud_digit_2_chaotix":  { "File": "Custom_huds.png", "Rect": "368,33,7,13", "Center": "-8,-1" },

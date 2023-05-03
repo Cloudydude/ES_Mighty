@@ -13,7 +13,6 @@
 	"Hyper_text":  { "File": "MightyAllBMP.bmp", "Rect": "0,88,74,16", "Center": "0,0" },
 
 	"Result_NamePlate_Mighty":  { "File": "Custom_huds.png", "Rect": "0,176,151,20", "Center": "31,0" },
-	"Result_NamePlate_Mighty_Levels":  { "File": "Custom_huds.png", "Rect": "0,176,108,20", "Center": "51,0" },
 	"I_was_frozen_today_0":  { "File": "Ow My Face.bmp", "Rect": "4,2,38,44", "Center": "18,21" },
 	"I_was_frozen_today_1":  { "File": "Ow My Face.bmp", "Rect": "47,2,38,44", "Center": "18,21" },
 	"I_was_also_frozen_today_0":  { "File": "Frostbite.bmp", "Rect": "16,10,30,43", "Center": "14,20" },

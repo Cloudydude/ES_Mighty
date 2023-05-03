@@ -1,15 +1,15 @@
 {
-	"ESS_Cont_Es1":  { "File": "Mightys_S3.png", "Rect": "366,34,16,22", "Center": "9,23" },
-	"ESS_Life_Es1":  { "File": "Mightys_S3.png", "Rect": "383,16,16,16", "Center": "8,16" },
+	"Mighty_DA_Challenges_S3":  { "File": "Mightys.png", "Rect": "0,3,16,21", "Center": "9,22" },
+	"Mighty_DA_Challenges_M":  { "File": "Mightys.png", "Rect": "16,0,17,24", "Center": "9,23" },
+	"ESS_Life_S3Mighty":  { "File": "MightyAllBMP.bmp", "Rect": "225,6,16,16", "Center": "8,16" },
+	"ESS_Life_ManiaMighty":  { "File": "MightyAllBMP.bmp", "Rect": "205,6,16,16", "Center": "8,16" },
+
+	"ESS_Cont_S3Mighty":  { "File": "MightyAllBMP.bmp", "Rect": "228,83,16,21", "Center": "9,21" },
+	"ESS_Cont_ManiaMighty":  { "File": "MightyAllBMP.bmp", "Rect": "244,80,17,24", "Center": "9,24" },
+
 	"dataSel_slot1":  { "File": "character_mighty.bmp", "Rect": "561,8,25,37", "Center": "13,37" },
 	"dataSel_lifeContinue_slot1":  { "File": "character_mighty.bmp", "Rect": "613,13,21,40", "Center": "0,0" },
 	"dataSel_life_slot1":  { "File": "character_mighty.bmp", "Rect": "613,13,21,16", "Center": "0,0" },
-	"dataSel_life_SegaSonic":  { "File": "Mightys.png", "Rect": "18,16,21,16", "Center": "0,0" },
-	"dataSel_life_Chaotix":  { "File": "Mightys.png", "Rect": "90,16,21,16", "Center": "0,0" },
-	"dataSel_life_Mania":  { "File": "Mightys.png", "Rect": "161,16,21,16", "Center": "0,0" },
-	"dataSel_life_Knuxred":  { "File": "Mightys.png", "Rect": "232,16,21,16", "Center": "0,0" },
-	"dataSel_life_BloodOrange":  { "File": "Mightys.png", "Rect": "303,16,21,16", "Center": "0,0" },
-	"dataSel_life_Wildberry":  { "File": "Mightys.png", "Rect": "371,16,21,16", "Center": "0,0" },
 	"level_select_S3C_M_Mighty":  { "File": "MightyAllBMP.bmp", "Rect": "205,6,16,16", "Center": "0,0" },
 	"Continue_icon_Mania":  { "File": "MightyAllBMP.bmp", "Rect": "16,32,17,24", "Center": "9,23" },
 	"Continue_icon_Mania_alt":  { "File": "Other_mightys.bmp", "Rect": "16,0,17,24", "Center": "9,23" },
