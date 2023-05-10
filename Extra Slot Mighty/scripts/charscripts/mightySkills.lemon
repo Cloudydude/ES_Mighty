@@ -1196,19 +1196,23 @@ function void Character.OnCollisionWithDynamicObject()
 	}
 	else
 	{
-		D1.u8 = u8[A1 + 0x28] & 0xc0
+		D1.u8 = (objA1.collision_attributes & collision_attributes.flags)
 		if (D1.u8 == 0)
 		{
 			// Collision is an enemy, i.e. is harmful, but can be attacked
 			bool attacking = false
-			if (char.bonus_effect & char.bonus.INVINCIBLE)
+			if (char.bonus_effect & char.bonus.INVINCIBLE || char.state == char.state.ROLLING || char.state == char.state.SPINDASH)
 			{
 				attacking = true
 			}
-			else if (char.state == char.state.ROLLING || char.state == char.state.SPINDASH)
+		#if STANDALONE
+			else if (Game.getSetting(SETTING_DROPDASH) && char.character == CHARACTER_SONIC && char.state == char.state.SONIC_DROPDASH)
 			{
+				// Count Sonic's drop dash as a rolling state
 				attacking = true
 			}
+		#endif
+
 			if (!attacking)
 			{
 				bool isThreat = false
@@ -1283,14 +1287,14 @@ function void Character.OnCollisionWithDynamicObject()
 				}
 			}
 		}
-		else if (D1.u8 == 0x40)
+		else if (D1.u8 == collision.flag.ITEM)
 		{
-			D0.u8 = u8[A1 + 0x28] & 0x3f
-			if (D0.u8 != 0x06)
+			D0.u8 = (objA1.collision_attributes & collision_attributes.size)
+			if (D0.u8 != collision.size.16x16)
 			{
 				// Collect ring, but only after 30 invulnerability frames
 				//  -> Remember that the "char.invuln.countdown" timer starts at 120
-				u8 timer = competition_mode.active ? char.invuln.countdown : u8[0xffffb034]
+				u8 timer = competition_mode.active ? char.invuln.countdown : u8[0xffffb000 + 0x34]
 				if (timer < 90)
 				{
 					u8[A1 + 0x05] = 0x04
@@ -1309,7 +1313,7 @@ function void Character.OnCollisionWithDynamicObject()
 					base.Character.OnCollisionWithDynamicObject()
 			}
 		}
-		else if (D1.u8 == 0x80)
+		else if (D1.u8 == collision.flag.THREAT)
 		{
 			if (MightyShellDeflect() && (char.state == char.state.ROLLING || char.state == char.state.COWERING || char.state == char.state.SPINDASH))
 				deflectProjectile()

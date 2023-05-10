@@ -3,7 +3,7 @@
 	"continue_icon_mighty":  { "File": "MightyAllBMP.bmp", "Rect": "128,80,17,24", "Center": "9,23" },
 	"continue_icon_slot1":  { "File": "MightyAllBMP.bmp", "Rect": "128,80,17,24", "Center": "9,23" },
 	"monitor1_icon_sonic":  { "File": "Mighty_monitor_life_icons.bmp", "Rect": "16,0,16,16", "Center": "8,8" },
-	"mighty_text":  { "File": "MightyAllBMP.bmp", "Rect": "0,56,96,16", "Center": "-6,0" },
+	"mighty_text":  { "File": "MightyAllBMP.bmp", "Rect": "0,56,88,16", "Center": "-1,0" },
 	
 	"dataSel_savePortrait_slot1":  { "File": "Save Portraits.png", "Rect": "0,0,80,56", "Center": "40,120" },
 	"dataSel_savePortrait_superslot1":  { "File": "Save Portraits.png", "Rect": "80,0,80,56", "Center": "40,120" },

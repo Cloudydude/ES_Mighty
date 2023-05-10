@@ -652,7 +652,7 @@ global bool Fixdamodorder
 
 function bool MightyModConflictCheck()
 {
-	return ((Mods.getModPriority("Sonic 3: D.A. Garden Edition") > Mods.getModPriority("Extra Character Slots")) || (Mods.getModPriority("Extra Slot Ray") > Mods.getModPriority("Extra Slot Mighty")) || (Mods.getModPriority("Extra Character Slots") > Mods.getModPriority("Extra Slot Mighty")) || Mods.isModActive("Ultimate Mighty") || Renderer.hasCustomSprite("goal_mighty_UW"))
+	return ( Mods.isModActive("Mighty & Ray in Sonic 3 A.I.R.") || (Mods.getModPriority("Sonic 3: D.A. Garden Edition") > Mods.getModPriority("Extra Character Slots")) || (Mods.getModPriority("Extra Slot Ray") > Mods.getModPriority("Extra Slot Mighty")) || (Mods.getModPriority("Extra Character Slots") > Mods.getModPriority("Extra Slot Mighty")) || Mods.isModActive("Ultimate Mighty") || Renderer.hasCustomSprite("goal_mighty_UW"))
 }
 
 function void initializeMainGame()

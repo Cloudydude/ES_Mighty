@@ -401,7 +401,7 @@ function void fn02ec80()
 {
 	if (global.xtrachar == 1)
 	{
-		D0 = -0x0C
+		D0 = -0x08
 		D1 = 0
 		return
 	}
@@ -413,8 +413,7 @@ function void LevelResults.UpdateCharacterNameDisplay()
 {
 	if (global.xtrachar == 1)
 	{
-		D0 = 0x18
-		// D0 = 0x0e
+		D0 = 0x10 // Decimal value is 16
 		objA0.position.x.u16 -= D0.u16
 		u16[A0 + 0x46] -= D0.u16
 		objA0.box_size.x += D0.u8

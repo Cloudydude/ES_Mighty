@@ -316,7 +316,7 @@ function void fn0067ee()
 
 function u8 MightyFallEntrance()
 {
-	return (Mods.isModActive("Falling sprites for all") && System.getGlobalVariableValueByName("Transitions")) ? 0x36 : char.state.FALLING_PANIC	
+	return (Mods.isModActive("Falling sprites for all") && System.getGlobalVariableValueByName("FSFA_Transitions")) ? 0x36 : char.state.FALLING_PANIC	
 }
 
 //# address-hook(0x074768) end(0x0747d0)
