@@ -10,15 +10,57 @@ function bool ESS_drawChar_Es(s16 px, s16 py, bool no_save, u8 ES_val)
 {
 	if (ES_val == 0x01)
 	{
+		u16 renderQueue = 0x6000
+		
 		s16 posx = px
 		if (Mighty_Partner == 0x01)
 			posx -= 0x03
 		
-		ExtraChar.DataSelect.drawCharacterSprite(posx, py, 0x6000)
+		u8 atex = getatex(0x01)
+		string key = Mods.isModActive("Mania Style Data Select") ? "dataSel_character_mighty" : getMightySprite()
+		
+		bool IsRayaPartner = (Mods.isModActive("Extra Slot Ray") && (System.getGlobalVariableValueByName("Ray_Partner") == 3 || System.getGlobalVariableValueByName("Ray_Partner") == 4))
+		if (Mighty_Partner == 1)
+		{
+			// Mighty
+			if (Renderer.hasCustomSprite(key))
+				Renderer.drawCustomSprite(key, px - 0x07, py, atex, SPRITE_FLAG_FLIP_X, renderQueue)
+
+			// Mighty_Partner
+			if (IsRayaPartner)
+			{
+				// Call the base function
+				Renderer.drawCustomSprite(Ray_menu_sprites(), px + 9, py - 2, getatex(0x02), SPRITE_FLAG_FLIP_X, renderQueue)
+			}
+			else
+			{
+				if (Renderer.hasCustomSprite("dataSel_character_tails"))
+					Renderer.drawCustomSprite("dataSel_character_tails", px+7, py-2, 0x60, SPRITE_FLAG_FLIP_X, renderQueue)
+				else
+				{
+			#if GAMEAPP <= 0x22121500
+					Standalone.drawCharacterSpriteDirect(CHARACTER_TAILS, px+6, py-18, 0xa6,  SPRITE_FLAG_FLIP_X, 0x60, renderQueue)
+			#else
+					Renderer.drawCustomSprite(getCharacterSelectSpriteKey(CHARACTER_TAILS), px+6, py-18, 0x60, SPRITE_FLAG_FLIP_X, renderQueue)
+			#endif
+				}
+
+			}
+		}
+		else
+		{
+			if (Renderer.hasCustomSprite(key))
+				Renderer.drawCustomSprite(key, px, py, atex, 0, renderQueue)
+		}
 		return true
 	}
 	
 	return base.ESS_drawChar_Es(px, py, no_save, ES_val)
+}
+
+function u64 Ray_menu_sprites()
+{
+	return base.Ray_menu_sprites()
 }
 
 function s32 ESS_saveBoxGetColor_Es(u8 ES_val)
@@ -39,11 +81,8 @@ function void ExtraChar.DataSelect.drawCharacterSprite(s16 px, s16 py, u16 rende
 	// if (global.game_mode == 0x9c)
 	// // 	lastGameMode = 0x9c
 	// System.writeDisplayLine(stringformat("objA0.animation.timer = %x", objA0.animation.timer))
-#if EXTRA_SAVE_SLOTS_ACTIVE
-	if (u8[A3 + 0x24] == 0x01)
-#else
+
 	if (objA0.animation.timer == 0x01)
-#endif
 	{
 		u8 atex = getatex(0x01)
 		string key = Mods.isModActive("Mania Style Data Select") ? "dataSel_character_mighty" : getMightySprite()
@@ -729,7 +768,7 @@ function bool Standalone.onWriteToSpriteTable(s16 px, s16 py, u16 renderQueue)
 				}
 				else if (Mods.isModActive("Extra Slot Ray") && objA0.update_address == 0x04e29c)
 				{
-					u8 atex2 = getatex(0x02)
+					u8 atex2 = 0x60
 					u8 animation = ((global.framecounter >> 3) % (4) + 0xb1)
 					key = (System.getGlobalVariableValueByName("Ray_Sprite_type") == 0) ? stringformat("Mania_Ray_0x%02x", animation) : stringformat("character_slot2_0x%02x", animation)
 					if (animation == 0xb4)

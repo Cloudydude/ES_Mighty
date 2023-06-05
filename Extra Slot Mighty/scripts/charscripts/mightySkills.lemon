@@ -296,7 +296,7 @@ function void Character.updateJumpMoves()
 							if (super.active || (Mighty_Custom_Mappings == 0 && ((input_pressed & Shield_Button) == 0)) || (Mighty_Custom_Mappings == 1 && ((input_pressed & CONTROL_C) == 0)) || ((char.bonus_effect & char.bonus.ANY_SHIELD) == 0) || (char.bonus_effect & char.bonus.INVINCIBLE) || Mighty_ElemenShi != 1)
 							{
 								char.double_jump_state = 0
-								if ((knuckles.preventclimbing & 0x80) == 0 && !OutofBounds && char.state == char.state.ROLLING && ((Mighty_Custom_Mappings == 0 && (input_pressed & Wall_Jump_Button)) || Mighty_Custom_Mappings == 1) && MightyCollisionTimer > 0 && ( (MightyWallCollision == 1 && control.player1.state & CONTROL_RIGHT && !IsFacingLeft) || (MightyWallCollision == 2 && control.player1.state & CONTROL_LEFT && IsFacingLeft) ))
+								if (!(knuckles.preventclimbing & 0x80) && !OutofBounds && char.state == char.state.ROLLING && ((Mighty_Custom_Mappings == 0 && (input_pressed & Wall_Jump_Button)) || Mighty_Custom_Mappings == 1) && MightyCollisionTimer > 0 && ( (MightyWallCollision == 1 && control.player1.state & CONTROL_RIGHT && !IsFacingLeft) || (MightyWallCollision == 2 && control.player1.state & CONTROL_LEFT && IsFacingLeft) ))
 								{
 									s16(char.position.y.u16) <= s16(level.vertical_wrap + char.hitbox_extends.y)
 									u8[A0 + 0x0d] |= 0x40 // MightyWallLatch = true
@@ -687,7 +687,7 @@ global u16 Held_Bounce_Vel
 
 define bool hammercontrol = u8[0xffffF63C + ((A0 == 0xffffb000) ? 0 : 0x01)]
 
-#if GAMEAPP <= 0x23032500
+
 function void fn030cf8()
 {
 	base.fn030cf8()
@@ -696,16 +696,14 @@ function void fn030cf8()
 	if (u8[A1 + 0x2e] & 0x81)
 		objA1.flags2a &= ~char.flag.IN_AIR
 }
-#endif
+
 
 function void Mighty.LandingOnGroundResetState()
 {
 	Do_not_flash = false
 	if !(((u32[char.object_standing_on + 0xffff0000] == 0x024090) || (u32[char.object_standing_on + 0xffff0000] == 0x022ef4) || (u32[char.object_standing_on + 0xffff0000] == 0x03cb66)) && (char.flags & char.flag.ON_OBJECT))
 		bouncy = true
-	char.flags &= ~char.flag.IN_AIR
-	char.flags &= ~char.flag.PUSHING
-	char.flags &= ~char.flag.CONTROL_LOCK
+	char.flags &= ~(char.flag.IN_AIR | char.flag.PUSHING | char.flag.CONTROL_LOCK)
 	char.jumping = 0
 	score.bonus_counter = 0		// No more increasing bonuses after hitting the ground
 	char.rotation.x = 0
@@ -795,11 +793,12 @@ function void Mighty.LandingOnGroundResetState()
 			MightyWallCollision = 0
 			MightyFrameCounter = 0
 			if ((HD_Shake == 0 || (!super.active && HD_Shake == 1) || (super.active && HD_Shake == 2)) && Standing && !MightyDustControl)
-			{
+			{			
 			#if GAMEAPP >= 0x22121500 // Latest update
 				Input.setControllerRumble(-1, 0.5f, 69.0f, 300)
 			#endif
-				camera.hyper_knux_shake = 0x0114
+				if !Mods.isModActive("CREATIVE FREEDOM")
+					camera.hyper_knux_shake = 0x0114
 			}
 			
 			//if hyper clear enemies too
@@ -3366,46 +3365,14 @@ function void fn0317ae()
 		base.fn0317ae()
 		return
 	}
-	objA1.velocity.y = -0x700
-	objA1.flags2a |= char.flag.IN_AIR
-	objA1.flags2a &= ~(char.flag.CONTROL_LOCK | char.flag.PUSHING)
-	u8[A1 + 0x2e] = 0
-
-#if STANDALONE
-	// Check for active dropdash
-	if (u8[A1 + 0x38] != CHARACTER_SONIC || u8[A1 + 0x20] != char.state.SONIC_DROPDASH)
-#endif
-	{
-		// Reset the "char.jumping" to make the character bounce off ignoring the velocity-y limit
-		u8[A1 + 0x40] = 0
-	}
-
-	objA0.state |= 0x01
-	if (s8[A0 + 0x2c] < 0)
-	{
-		objA1.velocity.y = -0x380
-		if (level.water_present != 0 && u8[A0 + 0x34] == 0)
-		{
-			A2 = 0x03185a
-			fn03181e()
-			fn03181e()
-			fn03181e()
-			fn03181e()
-			objA1.position.x.u16 = objA0.position.x.u16
-			objA1.position.y.u16 = objA0.position.y.u16
-		}
-	}
-
 	if (u8[A0 + 0x34] == 0)
 	{
-		playSound(0x77)
-		u8[A0 + 0x34] = 0x01
-		
 		MightyFrameCounter = 0
 		u8[A1 + 0x0b] = 0 // MightyWallCollision
 		u8[A1 + 0x0f] = 0 // MightyCollisionTimer
 		u8[A1 + 0x0d] &= ~0x40
 	}
+	base.fn0317ae()
 }
 
 // MGZ Spinning wheel triggers
@@ -3433,6 +3400,8 @@ function void fn025d9c()
 					u16[A0 + 0x30] = 0x3c
 					u8[A0 + 0x32] = 1
 					D0.u8 = (u8[A1 + 0x2a] + objA0.flags2a) & 0x01
+					if (u8[A5 + 0x2c] == 1) // Origins Parity Galore
+						playSound(0x8e) // Plays a new sound
 					if (D0.u8 == 0)
 					{
 						u8[A0 + 0x32] = 0xff
@@ -3449,6 +3418,8 @@ function void fn025d9c()
 					u16[A0 + 0x30] = 0x3c
 					u8[A0 + 0x32] = 1
 					D0.u8 = (u8[A1 + 0x2a] + objA0.flags2a) & 0x01
+					if (u8[A6 + 0x2c] == 1) // Origins Parity Galore
+                        playSound(0x8e) // Plays a new sound
 					if (D0.u8 == 0)
 					{
 						u8[A0 + 0x32] = 0xff

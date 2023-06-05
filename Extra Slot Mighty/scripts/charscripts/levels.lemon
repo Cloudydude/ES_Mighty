@@ -23,6 +23,18 @@ function bool ExtraChar.LevelManager.EnableCustomLevels(u8 extrachar)
 // 	base.ExtraChar.LevelManager.LoadCustomPalettes(extrachar, zoneAndAct)
 // }
 
+// Here so that the chunks load in properly when you first go from act 1 to act 2 of LRZ
+//# address-hook(0x078ae6) end(0x078afa)
+function void fn078ae6()
+{
+	if (global.xtrachar == 0x01 && Mighty.Levels && global.zone_act == 0x0901)
+	{
+		System.loadExternalRawData("lrz2_mighty_chunks", 0x1bc738)
+		Kosinski.addToDecompressionQueue(0x1bc738, 0xffff0180)
+	}
+	base.fn078ae6()
+}
+
 function void ExtraChar.LevelManager.LoadCustomChunks(u8 extrachar, u16 zoneAndAct)
 {
 	if (extrachar == 0x01)

@@ -3,8 +3,9 @@
 	{
 		"Name": "Extra Slot Mighty",
 		"Author": "iCloudius",
+		"UniqueID": "extra-slot-project-mighty",
 		"Description": "Mighty the Armadillo now appears as an extra playable character for Sonic 3 A.I.R without overriding Sonic's slot",
-		"ModVersion": "v5.11",
+		"ModVersion": "v5.15",
 		"GameVersion": "v22.05.15.0"
 	},
 	"Settings":

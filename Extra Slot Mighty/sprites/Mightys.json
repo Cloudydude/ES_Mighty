@@ -1,12 +1,10 @@
 {
 	"Mighty_DA_Challenges_S3":  { "File": "Mightys.png", "Rect": "0,3,16,21", "Center": "9,22" },
 	"Mighty_DA_Challenges_M":  { "File": "Mightys.png", "Rect": "16,0,17,24", "Center": "9,23" },
-	"ESS_Life_S3Mighty":  { "File": "MightyAllBMP.bmp", "Rect": "225,6,16,16", "Center": "8,16" },
-	"ESS_Life_ManiaMighty":  { "File": "MightyAllBMP.bmp", "Rect": "205,6,16,16", "Center": "8,16" },
-
+	"ESS_Life_S3Mighty":  { "File": "MightyAllBMP.bmp", "Rect": "265,6,16,16", "Center": "8,16" },
+	"ESS_Life_ManiaMighty":  { "File": "MightyAllBMP.bmp", "Rect": "245,6,16,16", "Center": "8,16" },
 	"ESS_Cont_S3Mighty":  { "File": "MightyAllBMP.bmp", "Rect": "228,83,16,21", "Center": "9,21" },
 	"ESS_Cont_ManiaMighty":  { "File": "MightyAllBMP.bmp", "Rect": "244,80,17,24", "Center": "9,24" },
-
 	"dataSel_slot1":  { "File": "character_mighty.bmp", "Rect": "561,8,25,37", "Center": "13,37" },
 	"dataSel_lifeContinue_slot1":  { "File": "character_mighty.bmp", "Rect": "613,13,21,40", "Center": "0,0" },
 	"dataSel_life_slot1":  { "File": "character_mighty.bmp", "Rect": "613,13,21,16", "Center": "0,0" },
@@ -30,7 +28,6 @@
 	"Continue_icon_S3_0x01":  { "File": "MightyAllBMP.bmp", "Rect": "197,83,16,21", "Center": "9,23" },
 	"Continue_icon_S3_0x02":  { "File": "MightyAllBMP.bmp", "Rect": "180,83,16,21", "Center": "9,23" },
 	"Continue_icon_S3_0x03":  { "File": "MightyAllBMP.bmp", "Rect": "197,83,16,21", "Center": "9,23" },
-
 	"monitor_icon":  { "File": "Mighty_monitor_life_icons.bmp", "Rect": "0,17,16,16", "Center": "8,8" },
 	"monitor_icon_S3":  { "File": "Mighty_monitor_life_icons.bmp", "Rect": "0,0,16,16", "Center": "8,8" }
 }
